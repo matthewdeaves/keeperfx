@@ -180,7 +180,12 @@ static struct CommandDesc const *find_command_desc(const struct CommandToken *to
     int token_len = token->end - token->start;
     for (int i = 0; cmdlist_desc[i].textptr != NULL; i++)
     {
-        if ((cmdlist_desc[i].textptr[token_len] == 0) && (strncmp(cmdlist_desc[i].textptr, token->start, token_len) == 0))
+        // strncmp first (it stops at either string's NUL, so it never reads past the
+        // command name). Only check textptr[token_len]==0 — the exact-length test — after
+        // a full token_len-byte match, where that index is in bounds. Doing the index
+        // first read past the end of any command name shorter than the token (a
+        // global-buffer-overflow caught by ASan, UB on every parsed line).
+        if ((strncmp(cmdlist_desc[i].textptr, token->start, token_len) == 0) && (cmdlist_desc[i].textptr[token_len] == 0))
         {
             cmnd_desc = &cmdlist_desc[i];
             break;

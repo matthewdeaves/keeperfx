@@ -70,6 +70,16 @@
 extern "C" {
 #endif
 
+// Portable unaligned 16-bit read. The original code did *(short*)(ptr) where ptr can be
+// an odd address; that is fine on x86 but raises SIGBUS on arm64. memcpy is the
+// UB-free, portable way and compiles to an efficient unaligned load where supported.
+static inline short read_short_unaligned(const void *p)
+{
+    short v;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
 #define TO_FIXED(x)    ((x) << 16)
 #define FROM_FIXED(x)    ((x) >> 16)
 
@@ -4776,7 +4786,7 @@ static void do_a_plane_of_engine_columns_isometric(long stl_x, long stl_y, long 
             else if ((render_map_flags & (SlbAtFlg_TaggedValuable|SlbAtFlg_Unexplored)) == 0)
             {
                 struct CubeConfigStats * cubed;
-                cubed = get_cube_model_stats(*(short *)((char *)&cur_colmn->floor_texture + 2 * ncor + 1));
+                cubed = get_cube_model_stats(read_short_unaligned((char *)&cur_colmn->floor_texture + 2 * ncor + 1));
                 unsigned short textr_id = engine_remap_texture_blocks(stl_x + xaval + xidx, stl_y, cubed->texture_id[4]);
                 // Top surface on full iso mode
                 do_a_gpoly_gourad_tr(&bec[0].cors[ncor], &bec[1].cors[ncor], &fec[1].cors[ncor], textr_id, -1);
@@ -4806,7 +4816,7 @@ static void do_a_plane_of_engine_columns_isometric(long stl_x, long stl_y, long 
         if (ncor > 0)
         {
             struct CubeConfigStats * cubed;
-            cubed = get_cube_model_stats(*(short *)((char *)&cur_colmn->floor_texture + 2 * ncor + 1));
+            cubed = get_cube_model_stats(read_short_unaligned((char *)&cur_colmn->floor_texture + 2 * ncor + 1));
             unsigned short textr_id = engine_remap_texture_blocks(stl_x + xaval + xidx, stl_y, cubed->texture_id[4]);
             do_a_gpoly_gourad_tr(&bec[0].cors[ncor], &bec[1].cors[ncor], &fec[1].cors[ncor], textr_id, -1);
             do_a_gpoly_gourad_bl(&fec[1].cors[ncor], &fec[0].cors[ncor], &bec[0].cors[ncor], textr_id, -1);

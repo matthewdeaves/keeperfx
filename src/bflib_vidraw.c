@@ -1298,6 +1298,17 @@ TbResult LbSpriteDrawOneColour(long x, long y, const struct TbSprite *spr, const
     }
 }
 
+// Portable unaligned 32-bit read. Sprite/pixel run-length words are read from byte
+// buffers (sprite->Data, scaled-sprite scanlines) at arbitrary offsets; a plain
+// *(uint32_t*) cast assumes 4-byte alignment and raises SIGBUS on arm64. memcpy is the
+// UB-free portable form and compiles to an efficient unaligned load.
+static inline uint32_t read_u32_unaligned(const void *p)
+{
+    uint32_t v;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
 void LbPixelBlockCopyForward(TbPixel * dst, const TbPixel * src, long len)
 {
     TbPixel px;
@@ -1309,7 +1320,7 @@ void LbPixelBlockCopyForward(TbPixel * dst, const TbPixel * src, long len)
         long l;
         for ( l = len>>2; l > 0; l--)
         {
-            pxquad = *(uint32_t *)src;
+            pxquad = read_u32_unaligned(src);  // src may be unaligned (dst is 4-aligned above)
             src += sizeof(uint32_t);
             *(uint32_t *)dst = pxquad;
             dst += sizeof(uint32_t);
@@ -1661,7 +1672,7 @@ TbResult LbHugeSpriteDrawUsingScalingUpData(uchar *outbuf, int scanline, int out
             while (out_end - outbuf < scanline)
             {
                 int pxlen;
-                pxlen = *(uint32_t *)sprdata;
+                pxlen = read_u32_unaligned(sprdata);  // sprdata is a byte buffer at an arbitrary offset
                 sprdata += 4;
                 TbPixel *out_start;
                 out_start = out_end;
@@ -1697,7 +1708,7 @@ TbResult LbHugeSpriteDrawUsingScalingUpData(uchar *outbuf, int scanline, int out
                     }
                 }
                 // Transparent bytes count
-                pxlen = *(uint32_t *)sprdata;
+                pxlen = read_u32_unaligned(sprdata);
                 sprdata += 4;
                 out_end -= xcurstep[0];
                 xcurstep += 2 * pxlen;

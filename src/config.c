@@ -682,18 +682,24 @@ int64_t get_named_field_value(const struct NamedField* named_field, const struct
         return *(signed char*)field;
     case dt_char:
         return *(char*)field;
-    case dt_short:
-        return *(signed short*)field;
-    case dt_ushort:
-        return *(unsigned short*)field;
-    case dt_int:
-        return *(signed int*)field;
-    case dt_uint:
-        return *(unsigned int*)field;
-    case dt_long:
-        return *(int32_t *)field;
-    case dt_ulong:
-        return *(uint32_t *)field;
+    case dt_short: {
+        signed short v; memcpy(&v, field, sizeof(v)); return v;
+    }
+    case dt_ushort: {
+        unsigned short v; memcpy(&v, field, sizeof(v)); return v;
+    }
+    case dt_int: {
+        signed int v; memcpy(&v, field, sizeof(v)); return v;
+    }
+    case dt_uint: {
+        unsigned int v; memcpy(&v, field, sizeof(v)); return v;
+    }
+    case dt_long: {
+        long v; memcpy(&v, field, sizeof(v)); return v;
+    }
+    case dt_ulong: {
+        unsigned long v; memcpy(&v, field, sizeof(v)); return (int64_t)v;
+    }
     case dt_longlong: {
         /* Use memcpy to avoid ARM LDRD strict-alignment fault. */
         int64_t v; memcpy(&v, field, sizeof(v)); return v;
@@ -701,8 +707,9 @@ int64_t get_named_field_value(const struct NamedField* named_field, const struct
     case dt_ulonglong: {
         uint64_t v; memcpy(&v, field, sizeof(v)); return (int64_t)v;
     }
-    case dt_float:
-        return (int64_t)(*(float*)field);
+    case dt_float: {
+        float v; memcpy(&v, field, sizeof(v)); return (int64_t)v;
+    }
     case dt_double: {
         double v; memcpy(&v, field, sizeof(v)); return (int64_t)v;
     }
@@ -754,38 +761,47 @@ void assign_default(const struct NamedField* named_field, int64_t value, const s
     case dt_short:
         if (value < SHRT_MIN || value > SHRT_MAX)
             NAMFIELDWRNLOG("Value out of range for signed short: %" PRId64, value);
-        else
-            *(signed short*)field = (signed short)value;
+        else {
+            signed short v = (signed short)value; memcpy(field, &v, sizeof(v));
+        }
         break;
     case dt_ushort:
         if (value < 0 || value > USHRT_MAX)
             NAMFIELDWRNLOG("Value out of range for unsigned short: %" PRId64, value);
-        else
-            *(unsigned short*)field = (unsigned short)value;
+        else {
+            unsigned short v = (unsigned short)value; memcpy(field, &v, sizeof(v));
+        }
         break;
     case dt_int:
         if (value < INT_MIN || value > INT_MAX)
             NAMFIELDWRNLOG("Value out of range for signed int: %" PRId64, value);
-        else
-            *(signed int*)field = (signed int)value;
+        else {
+            signed int v = (signed int)value; memcpy(field, &v, sizeof(v));
+        }
         break;
     case dt_uint:
         if (value < 0 || value > UINT_MAX)
             NAMFIELDWRNLOG("Value out of range for unsigned int: %" PRId64, value);
-        else
-            *(unsigned int*)field = (unsigned int)value;
+        else {
+            unsigned int v = (unsigned int)value; memcpy(field, &v, sizeof(v));
+        }
         break;
     case dt_long:
         if (value < LONG_MIN || value > LONG_MAX)
             NAMFIELDWRNLOG("Value out of range for signed long: %" PRId64, value);
-        else
-            *(signed long *)field = (signed long)value;
+        else {
+            // dt_long fields are native `long` (e.g. struct ComputerProcess); write the
+            // full native width (8 bytes on LP64, 4 on Windows) via memcpy for alignment.
+            long v = (long)value; memcpy(field, &v, sizeof(v));
+        }
         break;
     case dt_ulong:
         if (value < 0 || value > ULONG_MAX)
             NAMFIELDWRNLOG("Value out of range for unsigned long: %" PRId64, value);
-        else
-            *(unsigned long *)field = (unsigned long)value;
+        else {
+            // dt_ulong fields are native `unsigned long`; see dt_long note above.
+            unsigned long v = (unsigned long)value; memcpy(field, &v, sizeof(v));
+        }
         break;
     case dt_longlong:
         if (value < INT64_MIN || value > INT64_MAX)
@@ -805,9 +821,10 @@ void assign_default(const struct NamedField* named_field, int64_t value, const s
             memcpy(field, &v, sizeof(v));
         }
         break;
-    case dt_float:
-        *(float*)field = (float)value;
+    case dt_float: {
+        float v = (float)value; memcpy(field, &v, sizeof(v));
         break;
+    }
     case dt_double: {
         double v = (double)value;
         memcpy(field, &v, sizeof(v));

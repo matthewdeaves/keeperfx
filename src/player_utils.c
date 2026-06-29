@@ -702,7 +702,10 @@ void fill_in_explored_area(PlayerNumber plyr_idx, MapSubtlCoord stl_x, MapSubtlC
             }
             else
             {
-                scratch_slab_ptr = &first_scratch[get_slab_number(exploration_direction_offsets[*(int *)i].x,exploration_direction_offsets[*(int *)i].y) + game.map_tiles_x * slb_y];
+                // NOTE: i[0] holds the value and i[1..3] are always 0, so the original
+                // *(int*)i read i[0]. That is a misaligned 4-byte read (i is at a 5-byte
+                // stride) which is fine on x86 but raises SIGBUS on arm64 — read the byte.
+                scratch_slab_ptr = &first_scratch[get_slab_number(exploration_direction_offsets[(int)*i].x,exploration_direction_offsets[(int)*i].y) + game.map_tiles_x * slb_y];
                 scratch_slab_ptr[slb_x] |= 2u;
                 direction_flags &= i[4];
             }

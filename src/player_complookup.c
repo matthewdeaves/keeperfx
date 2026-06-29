@@ -235,7 +235,12 @@ void check_map_for_gold(void)
     }
     // Make a map with treasure areas marked
     unsigned char* treasure_map = (unsigned char*)big_scratch;
-    unsigned short* vein_list = (unsigned short*)&big_scratch[game.map_tiles_x * game.map_tiles_y];
+    // treasure_map uses one byte per slab; vein_list (shorts) starts right after it.
+    // Round the start up to an even offset so the unsigned short[] is 2-byte aligned —
+    // an odd base (e.g. 85*85 = 7225) makes every vein_list access an unaligned 2-byte
+    // read/write: fine on x86, but SIGBUS on arm64.
+    size_t vein_off = (((size_t)game.map_tiles_x * (size_t)game.map_tiles_y) + 1u) & ~(size_t)1u;
+    unsigned short* vein_list = (unsigned short*)&big_scratch[vein_off];
     for (slb_y = 0; slb_y < game.map_tiles_y; slb_y++)
     {
         for (slb_x = 0; slb_x < game.map_tiles_x; slb_x++)

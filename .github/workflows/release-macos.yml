@@ -99,7 +99,12 @@ jobs:
           **How to use**
           1. Download and unzip `KeeperFX.app.zip`.
           2. Drop `KeeperFX.app` into your existing KeeperFX folder, next to your `data/`, `sound/`, `fxdata/`, `campgns/` ... game data.
-          3. Double-click it. First launch: if Gatekeeper blocks it, right-click then choose Open once (ad-hoc signed, not notarized). If the folder is privacy-protected (Desktop/Documents/Downloads), click **Allow** when macOS asks for file access.
+          3. **Clear the "downloaded from the internet" flag** — this app is ad-hoc signed, not notarized, so macOS 15/26 blocks it on first launch ("Apple could not verify..."). Easiest fix, in Terminal:
+             ```
+             xattr -dr com.apple.quarantine /path/to/KeeperFX.app
+             ```
+             (Or: double-click, then System Settings → Privacy & Security → **Open Anyway**.)
+          4. Double-click it. If the folder is privacy-protected (Desktop/Documents/Downloads), click **Allow** when macOS asks for file access.
 
           Requires an Apple Silicon Mac and your own original Dungeon Keeper data plus a KeeperFX data release. This bundle is just the native engine.
           EOF

@@ -93,7 +93,11 @@ YourKeeperFX/            <- any folder (including Desktop/Documents)
 ```
 
 Double-click `KeeperFX.app`. On first launch:
-- If Gatekeeper blocks it (ad-hoc signed, not notarized), right-click → Open once.
+- **If you downloaded the `.app`**, macOS 15/26 blocks it with "Apple could not
+  verify…" (it's ad-hoc signed, not notarized). Clear the download flag once — in
+  Terminal: `xattr -dr com.apple.quarantine /path/to/KeeperFX.app` — or double-click,
+  then System Settings → Privacy & Security → **Open Anyway**. (A locally built
+  `.app` has no such flag and just opens.)
 - If the folder is privacy-protected (Desktop, Documents, Downloads), macOS asks
   to let KeeperFX access files there — click **Allow**. It then runs from any
   location.

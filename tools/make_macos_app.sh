@@ -58,20 +58,66 @@ dylibbundler \
     --dest-dir "$APP/Contents/libs" \
     --install-path "@executable_path/../libs"
 
-# Homebrew's `sdl2` is `sdl2-compat`: a thin libSDL2 that dlopens SDL3 at
-# runtime. Because that load is dynamic (not a link-time dependency), the pass
-# above can't see it and SDL3 is left out — the shim then fails in its
-# initializer. The shim's first search path is `@loader_path/libSDL3.dylib`
-# (unversioned), i.e. right next to libSDL2 in Contents/libs. Bundle libSDL3
-# under exactly that name and the shim finds it with no env vars or rpath.
-SDL3_SRC="$(brew --prefix sdl3 2>/dev/null)/lib/libSDL3.0.dylib"
-if [ -f "$APP/Contents/libs/libSDL2-2.0.0.dylib" ] && [ -f "$SDL3_SRC" ] \
-   && [ ! -f "$APP/Contents/libs/libSDL3.dylib" ]; then
-    echo "== bundling libSDL3 (sdl2-compat runtime dependency) =="
-    cp "$SDL3_SRC" "$APP/Contents/libs/libSDL3.dylib"
-    chmod u+w "$APP/Contents/libs/libSDL3.dylib"
-    install_name_tool -id "@executable_path/../libs/libSDL3.dylib" \
-        "$APP/Contents/libs/libSDL3.dylib"
+LIBS="$APP/Contents/libs"
+
+# dylibbundler only follows LC_LOAD_DYLIB entries (what `otool -L` shows). Any
+# library a dependency pulls in at runtime via dlopen()/SDL_LoadObject is
+# invisible to it, so those must be added by hand — AND then re-processed so
+# their own transitive dependencies get bundled and path-rewritten too. (The
+# original SDL3 handling copied the file but skipped that second step, leaving
+# any of SDL3's own non-system deps dangling at /opt/homebrew.)
+#
+# add_runtime_dylib <resolved-src-path> [dest-name]
+add_runtime_dylib() {
+    local src="$1" name="${2:-$(basename "$1")}"
+    [ -f "$src" ] || return 0
+    [ -f "$LIBS/$name" ] && return 0
+    echo "== bundling runtime (dlopen'd) dylib: $name =="
+    cp "$src" "$LIBS/$name"
+    chmod u+w "$LIBS/$name"
+    install_name_tool -id "@executable_path/../libs/$name" "$LIBS/$name"
+    # Pull in and rewrite THIS library's own dependencies. Use --overwrite-files,
+    # NOT --overwrite-dir: dest-dir IS $LIBS (the file we're fixing lives in it),
+    # and --overwrite-dir would `rm -r` that directory first — deleting the
+    # fix-file and every dylib the main pass already bundled. --overwrite-files
+    # overwrites individual files in place and leaves the rest of $LIBS intact.
+    dylibbundler \
+        --overwrite-files \
+        --bundle-deps \
+        --fix-file "$LIBS/$name" \
+        --dest-dir "$LIBS" \
+        --install-path "@executable_path/../libs" >/dev/null
+}
+
+# --- SDL3 (dlopen'd by the sdl2-compat shim as @loader_path/libSDL3.dylib) ---
+# The shim's first search path is @loader_path, i.e. right next to libSDL2 in
+# Contents/libs, so the unversioned name is what it looks for.
+if [ -f "$LIBS/libSDL2-2.0.0.dylib" ]; then
+    add_runtime_dylib "$(brew --prefix sdl3 2>/dev/null)/lib/libSDL3.0.dylib" "libSDL3.dylib"
+fi
+
+# --- SDL2_mixer audio decoders (dlopen'd by name at runtime) -----------------
+# KeeperFX plays music through SDL2_mixer (Mix_LoadMUS). SDL2_mixer loads its
+# Ogg/FLAC/MP3/Opus/MOD decoders dynamically, so dylibbundler never sees them:
+# on a machine WITH Homebrew they resolve from /opt/homebrew and music plays;
+# on a machine WITHOUT it they fail and music goes silent. Mirror the decoder
+# set into the bundle under both its versioned and unversioned SONAMEs (mixer
+# may request either).
+#
+# NOTE: copying them here is necessary but may not be sufficient — a bare-name
+# dlopen does not search Contents/libs. Whether this alone fixes playback MUST
+# be verified on-device (see HANDOFF_MACOS_AUDIO.md); if the decoders turn out
+# to be truly dlopen'd rather than linked, the durable fix is to statically link
+# them into SDL2_mixer. This block is harmless either way (dylibbundler dedups).
+if [ -f "$LIBS/libSDL2_mixer-2.0.0.dylib" ]; then
+    BREW_LIB="$(brew --prefix)/lib"
+    for stem in libvorbisfile libvorbis libogg libFLAC libmpg123 \
+                libopusfile libopus libxmp libmodplug libwavpack libfluidsynth; do
+        real="$(ls "$BREW_LIB/$stem".*.dylib 2>/dev/null | head -n1 || true)"
+        [ -n "$real" ] || continue
+        add_runtime_dylib "$real" "$(basename "$real")"   # versioned SONAME
+        add_runtime_dylib "$real" "$stem.dylib"           # unversioned alias
+    done
 fi
 
 # Icon (optional): build a .icns from the repo's PNG icon set via iconutil.
@@ -127,12 +173,21 @@ echo 'APPL????' > "$APP/Contents/PkgInfo"
 find "$APP/Contents/libs" -name '*.dylib' -exec codesign --force --sign - {} +
 codesign --force --sign - "$APP"
 
-echo "== verifying no Homebrew paths remain =="
-if otool -L "$APP/Contents/MacOS/keeperfx" | grep -q "/opt/homebrew"; then
-    echo "error: binary still references /opt/homebrew — bundling incomplete" >&2
-    otool -L "$APP/Contents/MacOS/keeperfx" | grep "/opt/homebrew" >&2
-    exit 1
-fi
+echo "== verifying bundle is self-contained (no Homebrew/local paths) =="
+# Walk EVERY Mach-O — the main binary and every bundled dylib — not just the
+# main binary. A link-time dep of a bundled library that dylibbundler failed to
+# rewrite would leak here. (This cannot see a *missing* dlopen'd library, which
+# is referenced by bare name; that class of gap is verified at runtime instead.)
+leaked=0
+for macho in "$APP/Contents/MacOS/keeperfx" "$LIBS"/*.dylib; do
+    [ -f "$macho" ] || continue
+    if otool -L "$macho" | grep -Eq "/opt/homebrew|/usr/local/"; then
+        echo "error: $(basename "$macho") still references a non-bundled path:" >&2
+        otool -L "$macho" | grep -E "/opt/homebrew|/usr/local/" | sed 's/^/    /' >&2
+        leaked=1
+    fi
+done
+[ "$leaked" -eq 0 ] || { echo "bundling incomplete — see above" >&2; exit 1; }
 
 echo "== done: $APP =="
 echo "   bundled dylibs: $(ls "$APP/Contents/libs" | wc -l | tr -d ' ')"

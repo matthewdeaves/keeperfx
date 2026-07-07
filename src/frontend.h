@@ -236,13 +236,15 @@ struct GuiButton;
 struct TbLoadFiles;
 struct TextScrollWindow;
 
-struct DemoItem { //sizeof = 5
+#pragma pack()
+struct DemoItem {
     uint8_t kind;
     union {
       FrontendMenuState state;
       const char *fname;
     };
 };
+#pragma pack(1)
 
 struct NetMessage { // sizeof = 0x45
   unsigned char plyr_idx;

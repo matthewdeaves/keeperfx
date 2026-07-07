@@ -119,9 +119,6 @@ enum TbConfigLoadFlags {
     CnfLd_PreListed     =  0x08, /**< Already parsed the names. */
 };
 
-#pragma pack(1)
-
-
 /******************************************************************************/
 
 enum confCommandResults
@@ -259,8 +256,8 @@ struct ConfigFileData{
 
 /******************************************************************************/
 extern char keeper_runtime_directory[152];
+extern char keeper_defaults_directory[640];
 
-#pragma pack()
 /******************************************************************************/
 extern unsigned long text_line_number;
 /******************************************************************************/

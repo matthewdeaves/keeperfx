@@ -45,6 +45,11 @@ public:
      *  querying SDL (consoles that own the display). Desktop: false. */
     virtual bool ForcesAllModesAvailable() const { return false; }
 
+    /** Runs at process entry, before kfxmain. Somewhere for a platform to fix
+     *  up process state the engine then depends on (macOS: the .app working
+     *  directory). Desktop default: nothing to do. */
+    virtual void EarlyStartup() {}
+
     /** The window system backing this platform (SDL desktop backend). */
     virtual IWindowSystem* GetWindowSystem();
 };

@@ -865,14 +865,25 @@ long start_emitter_playing(struct SoundEmitter *emit, SoundSmplTblID smptbl_id, 
     int32_t volume;
     int32_t pitch;
     get_emitter_pan_volume_pitch(&Receiver, emit, &pan, &volume, &pitch);
+    int32_t rawvol = volume; // DEBUG(sound-trace): volume before loudness scaling
     long smpl_idx = find_slot(smptbl_id, emit, ctype, priority);
     volume = (volume * loudness) / 256;
-    if (smpl_idx < 0)
-        return 0;
-    SoundMilesID mss_id = play_sample(get_emitter_id(emit), smptbl_id, volume, pan, smpitch, fild1D, ctype);
-    if (mss_id <= 0) {
+    // DEBUG(sound-trace): one line per sound so we can see exactly why a non-3D UI
+    // sound (dig-mark/put-down) goes silent while 3D sounds play. Remove before merge.
+    WARNLOG("SNDTRACE smp=%d emit=%d eflags=0x%x rawvol=%d loud=%d vol=%d pan=%d slot=%ld ctype=%d prio=%ld recv=(%d,%d,%d)",
+        (int)smptbl_id, (int)emit->index, (unsigned)emit->emitter_flags, (int)rawvol, (int)loudness,
+        (int)volume, (int)pan, smpl_idx, (int)ctype, priority,
+        (int)Receiver.pos.val_x, (int)Receiver.pos.val_y, (int)Receiver.pos.val_z);
+    if (smpl_idx < 0) {
+        WARNLOG("SNDTRACE smp=%d DROPPED: no free S3D sample slot (SampleList full)", (int)smptbl_id);
         return 0;
     }
+    SoundMilesID mss_id = play_sample(get_emitter_id(emit), smptbl_id, volume, pan, smpitch, fild1D, ctype);
+    if (mss_id <= 0) {
+        WARNLOG("SNDTRACE smp=%d DROPPED: play_sample returned %d (no free OpenAL source?)", (int)smptbl_id, (int)mss_id);
+        return 0;
+    }
+    WARNLOG("SNDTRACE smp=%d PLAYING mss=%d vol=%d", (int)smptbl_id, (int)mss_id, (int)volume);
     struct S3DSample* sample = &SampleList[smpl_idx];
     sample->priority = priority;
     sample->smptbl_id = smptbl_id;

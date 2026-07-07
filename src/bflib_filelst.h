@@ -26,8 +26,6 @@
 extern "C" {
 #endif
 /******************************************************************************/
-#pragma pack(1)
-
 struct TbLoadFiles;
 
 typedef const char * ModifyDataLoadFnameFunc(const char *);
@@ -51,9 +49,7 @@ struct TbLoadFilesV2 {
     LoadFilesGetSizeFunc GetSizeFunc;
     LoadFilesUnpackFunc UnpackFunc;
 };
-
-#pragma pack()
-/******************************************************************************/
+/*****************************************************************************/
 const char * defaultModifyDataLoadFilename(const char *);
 ModifyDataLoadFnameFunc *LbDataLoadSetModifyFilenameFunction(ModifyDataLoadFnameFunc *newfunc);
 extern ModifyDataLoadFnameFunc *modify_data_load_filename_function;

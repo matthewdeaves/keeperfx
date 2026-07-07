@@ -1452,6 +1452,26 @@ static char *_resolve_file_path_internal(char *dst, size_t dst_size,
           return dst;
       }
   }
+  // Bundled-defaults fallback (macOS .app): if an fxdata/creatrs file is absent from
+  // the user's game folder, serve the copy shipped in the bundle. Only fires when the
+  // real path is missing (overrides still win); inert unless keeper_defaults_directory
+  // is set, which only the macOS bundle locator does.
+  if (dst[0] != '\0'
+      && keeper_defaults_directory[0] != '\0'
+      && (fgroup == FGrp_FxData || fgroup == FGrp_CrtrData)
+      && !LbFileExists(dst))
+  {
+      char cand[4096];
+      const char *mod_sep = mod_dir[0] == 0 ? "" : "/";
+      const char *dir_sep = sdir[0] == 0 ? "" : "/";
+      const char *file_sep = fname[0] == 0 ? "" : "/";
+      int written = snprintf(cand, sizeof(cand), "%s%s%s%s%s%s%s",
+                             keeper_defaults_directory, mod_sep, mod_dir,
+                             dir_sep, sdir, file_sep, fname);
+      if (written > 0 && (size_t)written < sizeof(cand) && LbFileExists(cand)) {
+          snprintf(dst, dst_size, "%s", cand);
+      }
+  }
   return dst;
 }
 

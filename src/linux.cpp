@@ -14,9 +14,21 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#include <limits.h>
+#include <cstring>
+#include <cstdio>
+// Bundled config-defaults dir (see config_keeperfx.c); set from the .app's Contents/Resources.
+extern "C" char keeper_defaults_directory[640];
+#endif
 
 extern "C" const char * get_os_version() {
+#ifdef __APPLE__
+    return "macOS";
+#else
     return "Linux";
+#endif
 }
 
 extern "C" const void * get_image_base()
@@ -167,6 +179,38 @@ extern "C" void LbFileFindEnd(TbFileFind * ff)
 	delete ff;
 }
 
+#ifdef __APPLE__
+// Finder launches an .app with cwd "/", but the game data sits next to the .app.
+// When running from inside <name>.app/Contents/MacOS/, chdir to the folder holding
+// the .app. Outside a bundle (e.g. running bin/keeperfx directly), leave cwd alone.
+static void macos_chdir_to_bundle_parent(void)
+{
+	char exe[PATH_MAX];
+	uint32_t size = sizeof(exe);
+	if (_NSGetExecutablePath(exe, &size) != 0)
+		return;
+	char resolved[PATH_MAX];
+	if (realpath(exe, resolved) == nullptr)
+		return;
+	char *marker = strstr(resolved, "/Contents/MacOS/");
+	if (marker == nullptr)
+		return; // not inside an .app bundle; leave the working directory alone
+	*marker = '\0';                       // resolved -> ".../<name>.app"
+	// Record Contents/Resources as the bundled config-defaults fallback dir.
+	snprintf(keeper_defaults_directory, sizeof(keeper_defaults_directory),
+	         "%s/Contents/Resources", resolved);
+	char *slash = strrchr(resolved, '/');
+	if (slash == nullptr)
+		return;
+	*slash = '\0';                        // resolved -> folder containing the .app
+	if (chdir(resolved) != 0)
+		return;
+}
+#endif
+
 extern "C" int main(int argc, char *argv[]) {
+#ifdef __APPLE__
+	macos_chdir_to_bundle_parent();
+#endif
 	return kfxmain(argc, argv);
 }

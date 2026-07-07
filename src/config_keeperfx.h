@@ -110,6 +110,7 @@ extern unsigned int vid_scale_flags;
 /******************************************************************************/
 extern struct InstallInfo install_info;
 extern char keeper_runtime_directory[152];
+extern char keeper_defaults_directory[640];
 
 #pragma pack()
 /******************************************************************************/

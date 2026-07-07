@@ -57,6 +57,11 @@ unsigned short AtmosEnd = 1034;
 TbBool AssignCpuKeepers = 0;
 struct InstallInfo install_info;
 char keeper_runtime_directory[152];
+// Optional secondary base dir holding KeeperFX's own shipped config defaults
+// (fxdata/, creatrs/). Set only by the macOS self-contained .app locator to its
+// Contents/Resources; empty elsewhere. When set, the file resolver falls back to
+// it for those groups when a file is absent from the user's game folder.
+char keeper_defaults_directory[640] = "";
 short api_enabled = false;
 uint16_t api_port = 5599;
 unsigned long features_enabled = 0;

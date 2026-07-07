@@ -12,6 +12,7 @@
 #include "kfx/platform/IPlatform.h"
 #include "kfx/platform/PlatformWindows.h"
 #include "kfx/platform/PlatformLinux.h"
+#include "kfx/platform/PlatformMacOS.h"
 #include "kfx/platform/FileFind.h"
 #include "kfx/platform/FileSystemLb.h"
 #include "platform.h"
@@ -34,6 +35,8 @@ IPlatform* GetPlatform()
 {
 #if defined(_WIN32)
     static PlatformWindows s_platform;
+#elif defined(__APPLE__)
+    static PlatformMacOS s_platform;
 #else
     static PlatformLinux s_platform;
 #endif

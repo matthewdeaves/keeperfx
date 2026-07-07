@@ -118,5 +118,6 @@ void PlatformLinux::ShutdownSteam() {}
 
 extern "C" int main(int argc, char *argv[])
 {
+    GetPlatform()->EarlyStartup();
     return kfxmain(argc, argv);
 }

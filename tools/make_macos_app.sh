@@ -120,6 +120,24 @@ if [ -f "$LIBS/libSDL2_mixer-2.0.0.dylib" ]; then
     done
 fi
 
+# --- optional read-only sound diagnostic tool (tools/sound_check.cpp) --------
+# A standalone helper testers can run to report their sound.dat/OpenAL state.
+# It links only OpenAL, which the app already bundles, so it just needs its load
+# path rewritten to @executable_path/../libs (dest-dir IS $LIBS, so
+# --overwrite-files, never --overwrite-dir — see add_runtime_dylib above).
+SNDCHECK="$ROOT/bin/keeperfx-sndcheck"
+if [ -x "$SNDCHECK" ]; then
+    echo "== bundling sound diagnostic: keeperfx-sndcheck =="
+    cp "$SNDCHECK" "$APP/Contents/MacOS/keeperfx-sndcheck"
+    chmod +x "$APP/Contents/MacOS/keeperfx-sndcheck"
+    dylibbundler \
+        --overwrite-files \
+        --bundle-deps \
+        --fix-file "$APP/Contents/MacOS/keeperfx-sndcheck" \
+        --dest-dir "$LIBS" \
+        --install-path "@executable_path/../libs" >/dev/null
+fi
+
 # Icon (optional): build a .icns from the repo's PNG icon set via iconutil.
 ICON_KEY=''
 if command -v iconutil >/dev/null 2>&1 && [ -f "$ROOT/res/keeperfx_icon016-08bpp.png" ]; then
@@ -171,6 +189,8 @@ echo 'APPL????' > "$APP/Contents/PkgInfo"
 # stable app identity to attach the user's folder-access grant to (needed for
 # the privacy prompt described in the Info.plist usage strings).
 find "$APP/Contents/libs" -name '*.dylib' -exec codesign --force --sign - {} +
+[ -f "$APP/Contents/MacOS/keeperfx-sndcheck" ] \
+    && codesign --force --sign - "$APP/Contents/MacOS/keeperfx-sndcheck"
 codesign --force --sign - "$APP"
 
 echo "== verifying bundle is self-contained (no Homebrew/local paths) =="
@@ -179,7 +199,7 @@ echo "== verifying bundle is self-contained (no Homebrew/local paths) =="
 # rewrite would leak here. (This cannot see a *missing* dlopen'd library, which
 # is referenced by bare name; that class of gap is verified at runtime instead.)
 leaked=0
-for macho in "$APP/Contents/MacOS/keeperfx" "$LIBS"/*.dylib; do
+for macho in "$APP/Contents/MacOS/keeperfx" "$APP/Contents/MacOS/keeperfx-sndcheck" "$LIBS"/*.dylib; do
     [ -f "$macho" ] || continue
     if otool -L "$macho" | grep -Eq "/opt/homebrew|/usr/local/"; then
         echo "error: $(basename "$macho") still references a non-bundled path:" >&2

@@ -373,10 +373,21 @@ all: bin/keeperfx
 clean:
 	rm -rf obj bin src/ver_defs.h
 
-.PHONY: all clean
+.PHONY: all clean sndcheck
 
 bin/keeperfx: $(KFX_OBJECTS) $(TOML_OBJECTS) | bin
 	$(CXX) -o $@ $(KFX_OBJECTS) $(TOML_OBJECTS) $(KFX_LDFLAGS)
+
+# Standalone, read-only sound diagnostic (tools/sound_check.cpp). Links only
+# OpenAL, so it is tiny and self-contained; make_macos_app.sh bundles it into
+# the .app next to the engine and rewrites its OpenAL load path.
+sndcheck: bin/keeperfx-sndcheck
+
+bin/keeperfx-sndcheck: tools/sound_check.cpp | bin
+	$(CXX) -g -O2 $(ARCHFLAGS) -std=gnu++20 $(DARWINFLAGS) \
+		-DSNDCHECK_VERSION='"$(VER_STRING)"' \
+		$(shell $(PKG_CONFIG) --cflags-only-I openal) \
+		-o $@ $< -L$(BREW)/lib $(shell $(PKG_CONFIG) --libs openal)
 
 $(KFX_C_OBJECTS): obj/%.o: src/%.c src/ver_defs.h | obj
 	$(MKDIR) $(dir $@)

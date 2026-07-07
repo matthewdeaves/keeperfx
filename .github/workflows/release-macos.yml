@@ -63,8 +63,12 @@ jobs:
           BUILD_NUMBER=$(git rev-list --count HEAD)
           VER_SUFFIX=$(git rev-parse --short=7 HEAD)
           make -f macos.mk BUILD_NUMBER="$BUILD_NUMBER" VER_SUFFIX="$VER_SUFFIX" -j"$(sysctl -n hw.ncpu)"
+          make -f macos.mk sndcheck BUILD_NUMBER="$BUILD_NUMBER" VER_SUFFIX="$VER_SUFFIX"
           lipo -archs bin/keeperfx | grep -qw arm64
+          lipo -archs bin/keeperfx-sndcheck | grep -qw arm64
           ./tools/make_macos_app.sh
+          # the read-only sound diagnostic must have been bundled into the app
+          test -x dist/KeeperFX.app/Contents/MacOS/keeperfx-sndcheck
           codesign --verify --verbose=2 dist/KeeperFX.app
 
       - name: Zip the .app (ditto preserves signature + exec bit)
@@ -107,6 +111,12 @@ jobs:
           4. Double-click it. If the folder is privacy-protected (Desktop/Documents/Downloads), click **Allow** when macOS asks for file access.
 
           Requires an Apple Silicon Mac and your own original Dungeon Keeper data plus a KeeperFX data release. This bundle is just the native engine.
+
+          **Sound not working?** This bundle includes a read-only diagnostic. With the app next to your game data, run in Terminal:
+          ```
+          /path/to/KeeperFX.app/Contents/MacOS/keeperfx-sndcheck
+          ```
+          It checks your `sound.dat`, OpenAL device and every sample, plays a few, and writes `keeperfx-soundcheck.txt` next to the app to attach to a bug report. It only reads files and touches nothing.
           EOF
           printf '\nBuilt from commit %s.\n' "$SHA" >> "$RUNNER_TEMP/notes.md"
           TAG="${{ steps.rel.outputs.tag }}"

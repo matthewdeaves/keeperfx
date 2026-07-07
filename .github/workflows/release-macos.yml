@@ -1,0 +1,134 @@
+name: Release macOS app
+
+# Fork-specific: publish the self-contained KeeperFX.app as a downloadable
+# GitHub Release asset so people can grab it without a GitHub login and drop it
+# next to their existing KeeperFX install. Not part of the upstream macOS PR.
+#
+# Cut a release by pushing a tag like `macos-v1.4.0`, or run it manually
+# (Actions -> Release macOS app -> Run workflow). Manual runs update a rolling
+# `macos-latest` prerelease so there's always a current download.
+on:
+  push:
+    tags:
+      - 'macos-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# The rolling `macos-latest` prerelease is a single shared target (delete-then-
+# recreate on $GITHUB_SHA). Serialise runs so two overlapping dispatches can't
+# last-writer-win the tag/asset onto an older commit.
+concurrency:
+  group: release-macos-latest
+  cancel-in-progress: false
+
+jobs:
+  release-macos:
+    name: "Build & release KeeperFX.app"
+    # Only the canonical fork publishes releases; a fork-of-this-fork should not.
+    if: github.repository == 'matthewdeaves/keeperfx'
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Homebrew dependencies
+        run: |
+          set -eux
+          brew install \
+            pkg-config \
+            sdl2 sdl2_image sdl2_mixer sdl2_net \
+            ffmpeg \
+            luajit \
+            openal-soft \
+            libspng \
+            minizip \
+            miniupnpc \
+            libnatpmp \
+            zlib \
+            curl \
+            dylibbundler
+
+      - name: Cache source-only dependencies
+        id: deps-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/astronomy
+            deps/centijson
+            deps/enet6
+          key: macos-deps-${{ hashFiles('tools/build_macos_deps.sh') }}
+
+      - name: Build source-only dependencies
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: ./tools/build_macos_deps.sh
+
+      - name: Build engine + package .app
+        run: |
+          set -eux
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          VER_SUFFIX=$(git rev-parse --short=7 HEAD)
+          make -f macos.mk BUILD_NUMBER="$BUILD_NUMBER" VER_SUFFIX="$VER_SUFFIX" -j"$(sysctl -n hw.ncpu)"
+          lipo -archs bin/keeperfx | grep -qw arm64
+          ./tools/make_macos_app.sh
+          # the shipped config defaults must have been bundled into the app
+          test -f dist/KeeperFX.app/Contents/Resources/fxdata/sounds.cfg
+          codesign --verify --verbose=2 dist/KeeperFX.app
+
+      - name: Zip the .app (ditto preserves signature + exec bit)
+        run: |
+          set -eux
+          cd dist
+          ditto -c -k --keepParent KeeperFX.app KeeperFX.app.zip
+          ls -lh KeeperFX.app.zip
+
+      - name: Decide release tag/name
+        id: rel
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "title=KeeperFX.app (${GITHUB_REF_NAME})" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=macos-latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "title=KeeperFX.app (latest master)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          SHA=$(git rev-parse --short HEAD)
+          cat > "$RUNNER_TEMP/notes.md" <<'EOF'
+          > **Unofficial, personal fork — not affiliated with the official KeeperFX project.** This fork only adds a native macOS build; for the game itself, and for Windows/Linux, use https://github.com/dkfans/keeperfx . It is temporary: once upstream ships an official macOS / Apple Silicon build, it will be retired.
+
+          Native Apple Silicon (arm64) build of KeeperFX.
+
+          **How to use**
+          1. Download and unzip `KeeperFX.app.zip`.
+          2. Drop `KeeperFX.app` into your existing KeeperFX folder, next to your `data/`, `sound/`, `fxdata/`, `campgns/` ... game data.
+          3. **Clear the "downloaded from the internet" flag** — this app is ad-hoc signed, not notarized, so macOS 15/26 blocks it on first launch ("Apple could not verify..."). Easiest fix, in Terminal:
+             ```
+             xattr -dr com.apple.quarantine /path/to/KeeperFX.app
+             ```
+             (Or: double-click, then System Settings → Privacy & Security → **Open Anyway**.)
+          4. Double-click it. If the folder is privacy-protected (Desktop/Documents/Downloads), click **Allow** when macOS asks for file access.
+
+          Requires an Apple Silicon Mac and your own original Dungeon Keeper data plus a KeeperFX data release. This bundle is the native engine and carries its own KeeperFX config defaults (fxdata/creatrs), so it works even dropped next to an older data install.
+          EOF
+          printf '\nBuilt from commit %s.\n' "$SHA" >> "$RUNNER_TEMP/notes.md"
+          TAG="${{ steps.rel.outputs.tag }}"
+          PRE=""
+          if [ "${{ steps.rel.outputs.prerelease }}" = "true" ]; then
+            gh release delete "$TAG" --yes --cleanup-tag || true
+            PRE="--prerelease"
+          fi
+          gh release create "$TAG" dist/KeeperFX.app.zip \
+            --title "${{ steps.rel.outputs.title }}" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --target "$GITHUB_SHA" $PRE

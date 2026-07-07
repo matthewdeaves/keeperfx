@@ -1,0 +1,58 @@
+name: Build Windows
+
+# Fork-specific: validate the Windows (MinGW) build on every push to master.
+# Upstream's "Test Prototypes" job builds Windows only on PRs, so a straight
+# push/merge to master was previously unchecked. Push-only here so it doesn't
+# duplicate that PR build; mirrors build-prototype.yml's toolchain.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'deps/**'
+      - 'Makefile'
+      - 'version.mk'
+      - '.github/workflows/build-windows.yml'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: "Build Windows x86 (MinGW)"
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dkfans/setup-cpp@master
+
+      - name: Update system
+        run: |
+          set -eux
+          sudo apt update
+          sudo apt install -y build-essential g++-mingw-w64-i686 libpng16-16t64 7zip
+
+      - name: Build
+        run: |
+          set -eux
+          VER_MAJOR=$(grep -E '^VER_MAJOR=' version.mk | cut -d= -f2)
+          VER_MINOR=$(grep -E '^VER_MINOR=' version.mk | cut -d= -f2)
+          VER_RELEASE=$(grep -E '^VER_RELEASE=' version.mk | cut -d= -f2)
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          PACKAGE_SUFFIX=CI_$(git rev-parse --short=7 HEAD)
+          ARTIFACT_NAME=keeperfx-windows_x86-${VER_MAJOR}_${VER_MINOR}_${VER_RELEASE}_${BUILD_NUMBER}_${PACKAGE_SUFFIX}
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
+          # First pass primes the downloaded deps (enet6, curl, ...). The Makefile
+          # only ties those headers to a couple of source files, so under a
+          # parallel build another .c that includes them can compile before the
+          # tarball is extracted; -k tolerates that race while the deps land.
+          # The second pass then builds cleanly. (Same approach as build-prototype.)
+          make BUILD_NUMBER="$BUILD_NUMBER" PACKAGE_SUFFIX="$PACKAGE_SUFFIX" -k standard || true
+          make BUILD_NUMBER="$BUILD_NUMBER" PACKAGE_SUFFIX="$PACKAGE_SUFFIX" standard
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: bin/keeperfx.exe

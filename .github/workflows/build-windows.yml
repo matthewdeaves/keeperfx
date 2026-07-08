@@ -15,6 +15,11 @@ on:
       - '.github/workflows/build-windows.yml'
   workflow_dispatch:
 
+# Don't stack builds for the same ref; cancel a superseded run.
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows:
     name: "Build Windows x86 (MinGW)"

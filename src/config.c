@@ -1324,11 +1324,11 @@ static char *_resolve_file_path_internal(char *dst, size_t dst_size,
       sdir="levels";
       break;
   case FGrp_Save:
-      mdir=keeper_runtime_directory;
+      mdir=keeper_userdata_directory[0] ? keeper_userdata_directory : keeper_runtime_directory;
       sdir="save";
       break;
   case FGrp_SShots:
-      mdir=keeper_runtime_directory;
+      mdir=keeper_userdata_directory[0] ? keeper_userdata_directory : keeper_runtime_directory;
       sdir="scrshots";
       break;
   case FGrp_StdSound:

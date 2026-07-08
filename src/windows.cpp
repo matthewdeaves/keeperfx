@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <memory>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
 #include <shellapi.h>
@@ -15,6 +16,10 @@
 #include <utility>
 #include <vector>
 #include "post_inc.h"
+
+// Per-user writable dir, kept out of the read-only game folder (see config.h).
+extern "C" char keeper_userdata_directory[640];
+extern "C" char keeper_runtime_directory[152];
 
 extern "C" const char * get_os_version()
 {
@@ -105,6 +110,88 @@ LONG __stdcall Vex_handler(_EXCEPTION_POINTERS *ExceptionInfo)
     }
     LbJustLog("Exception 0x%08lx thrown: %s\n", exception_code, exception_name(exception_code));
     return EXCEPTION_CONTINUE_SEARCH;
+}
+
+// mkdir -p for a forward-slash path (drive-root and existing dirs tolerated).
+// False only if the final dir couldn't be created and doesn't already exist.
+static bool win_make_dirs(const char *path)
+{
+    char tmp[700];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    for (char *p = tmp + 1; *p != '\0'; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            CreateDirectoryA(tmp, NULL); // ignore errors (already exists / "C:" root)
+            *p = '/';
+        }
+    }
+    return CreateDirectoryA(tmp, NULL) || GetLastError() == ERROR_ALREADY_EXISTS;
+}
+
+// One-time: if dstdir is empty, copy the regular files from srcdir (the old
+// in-place save/ dir) so existing saves survive the move. Copies, never moves.
+static void win_migrate_saves(const char *srcdir, const char *dstdir)
+{
+    char pat[720];
+    WIN32_FIND_DATAA fd;
+    snprintf(pat, sizeof(pat), "%s/*", dstdir);
+    HANDLE h = FindFirstFileA(pat, &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            if (fd.cFileName[0] == '.')
+                continue;
+            FindClose(h);
+            return; // already populated — leave it alone
+        } while (FindNextFileA(h, &fd));
+        FindClose(h);
+    }
+    snprintf(pat, sizeof(pat), "%s/*", srcdir);
+    h = FindFirstFileA(pat, &fd);
+    if (h == INVALID_HANDLE_VALUE)
+        return;
+    do {
+        if (fd.cFileName[0] == '.')
+            continue;
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            continue;
+        char sp[720], dp[720];
+        snprintf(sp, sizeof(sp), "%s/%s", srcdir, fd.cFileName);
+        snprintf(dp, sizeof(dp), "%s/%s", dstdir, fd.cFileName);
+        CopyFileA(sp, dp, TRUE); // TRUE: don't overwrite an existing file
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+}
+
+// Point saves/screenshots at %APPDATA%\KeeperFX instead of the (maybe read-only,
+// e.g. under Program Files) game folder; create it and migrate existing saves
+// once. Forward slashes so the path composes with the resolver. See ADR 0001.
+extern "C" void setup_userdata_directories(void)
+{
+    const char *appdata = getenv("APPDATA");
+    if (appdata == NULL || appdata[0] == '\0')
+        return;
+
+    char base[640];
+    snprintf(base, sizeof(base), "%s/KeeperFX", appdata);
+    for (char *p = base; *p != '\0'; p++) {
+        if (*p == '\\')
+            *p = '/';
+    }
+
+    char savedir[700], shotdir[700];
+    snprintf(savedir, sizeof(savedir), "%s/save", base);
+    snprintf(shotdir, sizeof(shotdir), "%s/scrshots", base);
+    if (!win_make_dirs(savedir))
+        return;
+    win_make_dirs(shotdir);
+
+    if (keeper_runtime_directory[0] != '\0') {
+        char oldsave[200];
+        snprintf(oldsave, sizeof(oldsave), "%s/save", keeper_runtime_directory);
+        win_migrate_saves(oldsave, savedir);
+    }
+
+    snprintf(keeper_userdata_directory, sizeof(keeper_userdata_directory), "%s", base);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow) {

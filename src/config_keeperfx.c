@@ -62,6 +62,8 @@ char keeper_runtime_directory[152];
 // Contents/Resources; empty elsewhere. When set, the file resolver falls back to
 // it for those groups when a file is absent from the user's game folder.
 char keeper_defaults_directory[640] = "";
+// Per-user writable dir (see config.h). Empty unless a platform locator sets it.
+char keeper_userdata_directory[640] = "";
 short api_enabled = false;
 uint16_t api_port = 5599;
 unsigned long features_enabled = 0;

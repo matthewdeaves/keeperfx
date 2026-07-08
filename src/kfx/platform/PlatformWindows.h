@@ -23,6 +23,8 @@ public:
     void ShutdownSteam() override;
 
     bool VideoInit() override;
+
+    void SetupUserDataDirectories() override;
 };
 
 #endif // PLATFORM_WINDOWS_H

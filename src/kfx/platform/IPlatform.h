@@ -45,6 +45,11 @@ public:
      *  querying SDL (consoles that own the display). Desktop: false. */
     virtual bool ForcesAllModesAvailable() const { return false; }
 
+    /** Create this OS's per-user data dir (saves, settings, screenshots),
+     *  migrate any saves left in the install dir, and point the file resolver
+     *  at it. Called once startup knows the runtime directory. */
+    virtual void SetupUserDataDirectories() = 0;
+
     /** Runs at process entry, before kfxmain. Somewhere for a platform to fix
      *  up process state the engine then depends on (macOS: the .app working
      *  directory). Desktop default: nothing to do. */

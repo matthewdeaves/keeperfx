@@ -256,6 +256,9 @@ struct ConfigFileData{
 /******************************************************************************/
 extern char keeper_runtime_directory[152];
 extern char keeper_defaults_directory[640];
+// Per-user writable dir (saves/settings/screenshots), separate from the
+// read-only install. Empty unless a platform locator sets it. See ADR 0001.
+extern char keeper_userdata_directory[640];
 
 /******************************************************************************/
 extern unsigned long text_line_number;

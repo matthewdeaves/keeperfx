@@ -13,7 +13,15 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fnmatch.h>
+#include <unistd.h>
+#include <limits.h>
+#include <cerrno>
+#include <cstdio>
 #include "post_inc.h"
+
+// Per-user writable dir, kept out of the read-only game folder (see config.h).
+extern "C" char keeper_userdata_directory[640];
+extern "C" char keeper_runtime_directory[152];
 
 static bool filespec_is_pattern(const char* filespec)
 {
@@ -87,6 +95,113 @@ void   PlatformLinux::StopRedbookTrack() {}
 
 int  PlatformLinux::InitSteam() { return -1; }
 void PlatformLinux::ShutdownSteam() {}
+
+/******************************************************************************/
+// Per-user data directory.
+
+// Create a directory and any missing parents (like mkdir -p). Returns false on failure.
+static bool make_dirs(const char* path)
+{
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    size_t len = strlen(tmp);
+    if (len == 0)
+        return false;
+    if (tmp[len - 1] == '/')
+        tmp[len - 1] = '\0';
+    for (char* p = tmp + 1; *p != '\0'; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            if (mkdir(tmp, 0755) != 0 && errno != EEXIST)
+                return false;
+            *p = '/';
+        }
+    }
+    return mkdir(tmp, 0755) == 0 || errno == EEXIST;
+}
+
+// One-time: if dst is empty, copy the regular files from src (the old in-place
+// save/ dir) so existing saves survive the move. Copies, never moves.
+static void migrate_dir(const char* src, const char* dst)
+{
+    DIR* dd = opendir(dst);
+    if (dd != nullptr) {
+        struct dirent* e;
+        while ((e = readdir(dd)) != nullptr) {
+            if (e->d_name[0] == '.')
+                continue;
+            closedir(dd);
+            return; // already populated -- leave it alone
+        }
+        closedir(dd);
+    }
+    DIR* sd = opendir(src);
+    if (sd == nullptr)
+        return;
+    struct dirent* e;
+    while ((e = readdir(sd)) != nullptr) {
+        if (e->d_name[0] == '.')
+            continue;
+        char sp[PATH_MAX], dp[PATH_MAX];
+        snprintf(sp, sizeof(sp), "%s/%s", src, e->d_name);
+        snprintf(dp, sizeof(dp), "%s/%s", dst, e->d_name);
+        struct stat st;
+        if (stat(sp, &st) != 0 || !S_ISREG(st.st_mode))
+            continue;
+        FILE* in = fopen(sp, "rb");
+        if (in == nullptr)
+            continue;
+        FILE* out = fopen(dp, "wb");
+        if (out == nullptr) {
+            fclose(in);
+            continue;
+        }
+        char buf[65536];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+            fwrite(buf, 1, n, out);
+        fclose(in);
+        fclose(out);
+    }
+    closedir(sd);
+}
+
+bool PlatformLinux::GetUserDataBaseDir(char* out, size_t out_size) const
+{
+    const char* xdg = getenv("XDG_DATA_HOME");
+    if (xdg != nullptr && xdg[0] == '/') { // spec: relative XDG paths are invalid
+        snprintf(out, out_size, "%s/keeperfx", xdg);
+        return true;
+    }
+    const char* home = getenv("HOME");
+    if (home == nullptr || home[0] == '\0')
+        return false;
+    snprintf(out, out_size, "%s/.local/share/keeperfx", home);
+    return true;
+}
+
+// Point saves/screenshots at this platform's per-user dir (see ADR 0001),
+// creating it and migrating any existing saves once.
+void PlatformLinux::SetupUserDataDirectories()
+{
+    char base[640];
+    if (!GetUserDataBaseDir(base, sizeof(base)))
+        return;
+    if (!make_dirs(base))
+        return;
+
+    char savedir[700], shotdir[700];
+    snprintf(savedir, sizeof(savedir), "%s/save", base);
+    snprintf(shotdir, sizeof(shotdir), "%s/scrshots", base);
+    if (make_dirs(savedir) && keeper_runtime_directory[0] != '\0') {
+        char oldsave[200];
+        snprintf(oldsave, sizeof(oldsave), "%s/save", keeper_runtime_directory);
+        migrate_dir(oldsave, savedir);
+    }
+    make_dirs(shotdir);
+
+    snprintf(keeper_userdata_directory, sizeof(keeper_userdata_directory), "%s", base);
+}
 
 /******************************************************************************/
 // Process entry point.

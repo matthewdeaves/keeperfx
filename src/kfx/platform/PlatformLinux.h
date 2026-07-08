@@ -3,6 +3,8 @@
 
 #include "kfx/platform/IPlatform.h"
 
+#include <cstddef>
+
 /** Linux desktop platform. */
 class PlatformLinux : public IPlatform {
 public:
@@ -23,6 +25,14 @@ public:
     void ShutdownSteam() override;
 
     bool VideoInit() override;
+
+    void SetupUserDataDirectories() override;
+
+protected:
+    /** Where this OS keeps per-user application data. Linux follows the XDG
+     *  base-directory spec; macOS overrides with ~/Library/Application Support.
+     *  False when there is nowhere sensible to write (no HOME). */
+    virtual bool GetUserDataBaseDir(char* out, size_t out_size) const;
 };
 
 #endif // PLATFORM_LINUX_H

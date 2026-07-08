@@ -82,6 +82,11 @@ extern "C" void steam_api_shutdown(void) { GetPlatform()->ShutdownSteam(); }
 
 /******************************************************************************/
 
+extern "C" void PlatformManager_SetupUserDataDirectories(void)
+{
+    GetPlatform()->SetupUserDataDirectories();
+}
+
 extern "C" int PlatformManager_InitVideo(void)
 {
     return GetPlatform()->VideoInit() ? 1 : 0;

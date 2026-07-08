@@ -144,6 +144,9 @@ int create_directory_for_file(const char * fname)
   while (separator != NULL) {
     memcpy(tmp, fname, separator - fname);
     tmp[separator - fname] = 0;
+    // Skip the empty leading component of an absolute path ("/a/b" -> ""), which
+    // would otherwise fail mkdir with ENOENT and abort directory creation.
+    if (tmp[0] != 0) {
 #if defined(_WIN32)
     if (mkdir(tmp) != 0) {
 #else
@@ -153,6 +156,7 @@ int create_directory_for_file(const char * fname)
         free(tmp);
         return 0;
       }
+    }
     }
     separator = strchr(++separator, '/');
   }

@@ -104,7 +104,9 @@ TbBool cumulative_screen_shot(void)
     unsigned long i;
     for (i = 0; i < 10000; i++)
     {
-        snprintf(fname, sizeof(fname), "scrshots/scr%05lu.%s", i, fext);
+        char sname[32];
+        snprintf(sname, sizeof(sname), "scr%05lu.%s", i, fext);
+        snprintf(fname, sizeof(fname), "%s", get_game_file_path(FGrp_SShots, sname));
         if (!LbFileExists(fname)) break;
     }
     if (i >= 10000)

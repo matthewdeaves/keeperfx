@@ -14,11 +14,16 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <fnmatch.h>
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
 #include <limits.h>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
+#include <cerrno>
+// Per-user writable dir, kept out of the read-only game folder (see config.h).
+extern "C" char keeper_userdata_directory[640];
+extern "C" char keeper_runtime_directory[152];
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
 // Bundled config-defaults dir (see config_keeperfx.c); set from the .app's Contents/Resources.
 extern "C" char keeper_defaults_directory[640];
 #endif
@@ -206,7 +211,112 @@ static void macos_chdir_to_bundle_parent(void)
 	if (chdir(resolved) != 0)
 		return;
 }
+#endif // __APPLE__
+
+// Create a directory and any missing parents (like mkdir -p). Returns false on failure.
+static bool make_dirs(const char *path)
+{
+	char tmp[PATH_MAX];
+	snprintf(tmp, sizeof(tmp), "%s", path);
+	size_t len = strlen(tmp);
+	if (len == 0)
+		return false;
+	if (tmp[len - 1] == '/')
+		tmp[len - 1] = '\0';
+	for (char *p = tmp + 1; *p != '\0'; p++) {
+		if (*p == '/') {
+			*p = '\0';
+			if (mkdir(tmp, 0755) != 0 && errno != EEXIST)
+				return false;
+			*p = '/';
+		}
+	}
+	return mkdir(tmp, 0755) == 0 || errno == EEXIST;
+}
+
+// One-time: if dst is empty, copy the regular files from src (the old in-place
+// save/ dir) so existing saves survive the move. Copies, never moves.
+static void migrate_dir(const char *src, const char *dst)
+{
+	DIR *dd = opendir(dst);
+	if (dd != nullptr) {
+		struct dirent *e;
+		while ((e = readdir(dd)) != nullptr) {
+			if (e->d_name[0] == '.')
+				continue;
+			closedir(dd);
+			return; // already populated — leave it alone
+		}
+		closedir(dd);
+	}
+	DIR *sd = opendir(src);
+	if (sd == nullptr)
+		return;
+	struct dirent *e;
+	while ((e = readdir(sd)) != nullptr) {
+		if (e->d_name[0] == '.')
+			continue;
+		char sp[PATH_MAX], dp[PATH_MAX];
+		snprintf(sp, sizeof(sp), "%s/%s", src, e->d_name);
+		snprintf(dp, sizeof(dp), "%s/%s", dst, e->d_name);
+		struct stat st;
+		if (stat(sp, &st) != 0 || !S_ISREG(st.st_mode))
+			continue;
+		FILE *in = fopen(sp, "rb");
+		if (in == nullptr)
+			continue;
+		FILE *out = fopen(dp, "wb");
+		if (out == nullptr) {
+			fclose(in);
+			continue;
+		}
+		char buf[65536];
+		size_t n;
+		while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+			fwrite(buf, 1, n, out);
+		fclose(in);
+		fclose(out);
+	}
+	closedir(sd);
+}
+
+// Point saves/screenshots at this platform's per-user dir (see ADR 0001),
+// creating it and migrating any existing saves once. Call after the runtime dir
+// is known.
+extern "C" void setup_userdata_directories(void)
+{
+	char base[640];
+#ifdef __APPLE__
+	const char *home = getenv("HOME");
+	if (home == nullptr || home[0] == '\0')
+		return;
+	snprintf(base, sizeof(base), "%s/Library/Application Support/KeeperFX", home);
+#else
+	const char *xdg = getenv("XDG_DATA_HOME");
+	if (xdg != nullptr && xdg[0] == '/') {  // spec: relative XDG paths are invalid
+		snprintf(base, sizeof(base), "%s/keeperfx", xdg);
+	} else {
+		const char *home = getenv("HOME");
+		if (home == nullptr || home[0] == '\0')
+			return;
+		snprintf(base, sizeof(base), "%s/.local/share/keeperfx", home);
+	}
 #endif
+	if (!make_dirs(base))
+		return;
+
+	char savedir[700], shotdir[700];
+	snprintf(savedir, sizeof(savedir), "%s/save", base);
+	snprintf(shotdir, sizeof(shotdir), "%s/scrshots", base);
+	if (make_dirs(savedir) && keeper_runtime_directory[0] != '\0') {
+		char oldsave[200];
+		snprintf(oldsave, sizeof(oldsave), "%s/save", keeper_runtime_directory);
+		migrate_dir(oldsave, savedir);
+	}
+	make_dirs(shotdir);
+
+	snprintf(keeper_userdata_directory, sizeof(keeper_userdata_directory), "%s", base);
+}
 
 extern "C" int main(int argc, char *argv[]) {
 #ifdef __APPLE__

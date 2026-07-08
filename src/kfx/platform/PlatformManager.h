@@ -12,6 +12,9 @@ const char * PlatformManager_GetWineVersion(void);
 const char * PlatformManager_GetWineHost(void);
 const char * PlatformManager_GetUserPrefDir(void);
 
+// Route saves/screenshots to this OS's per-user dir (no-op where unavailable).
+void         PlatformManager_SetupUserDataDirectories(void);
+
 int          PlatformManager_InitVideo(void);
 int          PlatformManager_HasWindow(void);
 int          PlatformManager_GetIsAppActive(void);

@@ -13,6 +13,15 @@ extern "C" char keeper_defaults_directory[640];
 
 const char* PlatformMacOS::GetOSVersion() const { return "macOS"; }
 
+bool PlatformMacOS::GetUserDataBaseDir(char* out, size_t out_size) const
+{
+    const char* home = getenv("HOME");
+    if (home == nullptr || home[0] == '\0')
+        return false;
+    snprintf(out, out_size, "%s/Library/Application Support/KeeperFX", home);
+    return true;
+}
+
 // When running from inside <name>.app/Contents/MacOS/, chdir to the folder holding
 // the .app. Outside a bundle (e.g. running bin/keeperfx directly), leave cwd alone.
 void PlatformMacOS::EarlyStartup()

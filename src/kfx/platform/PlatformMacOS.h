@@ -14,6 +14,12 @@ public:
      *  .app, so the working directory has to be fixed before anything opens a
      *  file. Also records Contents/Resources as the bundled-defaults dir. */
     void EarlyStartup() override;
+
+protected:
+    /** ~/Library/Application Support/KeeperFX. Screenshots live here too rather
+     *  than ~/Pictures, so taking one never trips a privacy prompt mid-game
+     *  (see docs/adr/0001-macos-userdata-locations.md). */
+    bool GetUserDataBaseDir(char* out, size_t out_size) const override;
 };
 
 #endif // PLATFORM_MACOS_H

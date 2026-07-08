@@ -1,0 +1,73 @@
+name: Build Linux
+
+# Fork-specific: validate the native Linux build on every push to master.
+# Upstream's "Test Prototypes" job builds Linux only on PRs, so a straight
+# push/merge to master was previously unchecked. Push-only here so it doesn't
+# duplicate that PR build; mirrors build-prototype.yml's Linux deps/toolchain.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'deps/**'
+      - 'linux.mk'
+      - 'version.mk'
+      - '.github/workflows/build-linux.yml'
+  workflow_dispatch:
+
+# Don't stack builds for the same ref; cancel a superseded run.
+concurrency:
+  group: build-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux:
+    name: "Build Linux x86_64"
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update system
+        run: |
+          set -eux
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            pkg-config \
+            curl \
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libopenal-dev \
+            libluajit-5.1-dev \
+            libminizip-dev \
+            libnatpmp-dev \
+            libspng-dev \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-mixer-dev \
+            libsdl2-net-dev \
+            libswresample-dev \
+            libminiupnpc-dev \
+            zlib1g-dev
+
+      - name: Build
+        run: |
+          set -eux
+          VER_MAJOR=$(grep -E '^VER_MAJOR=' version.mk | cut -d= -f2)
+          VER_MINOR=$(grep -E '^VER_MINOR=' version.mk | cut -d= -f2)
+          VER_RELEASE=$(grep -E '^VER_RELEASE=' version.mk | cut -d= -f2)
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          PACKAGE_SUFFIX=CI_$(git rev-parse --short=7 HEAD)
+          ARTIFACT_NAME=keeperfx-linux_x86_64-${VER_MAJOR}_${VER_MINOR}_${VER_RELEASE}_${BUILD_NUMBER}_${PACKAGE_SUFFIX}
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
+          make BUILD_NUMBER="$BUILD_NUMBER" VER_SUFFIX="$PACKAGE_SUFFIX" -f linux.mk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: bin/keeperfx

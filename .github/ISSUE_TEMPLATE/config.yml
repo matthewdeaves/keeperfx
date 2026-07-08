@@ -1,0 +1,10 @@
+# This is an unofficial macOS / Apple Silicon fork. Keep this tracker for the
+# native macOS build only; everything else belongs to the official project.
+blank_issues_enabled: true
+contact_links:
+  - name: KeeperFX bugs, gameplay, and Windows / Linux (official project)
+    url: https://github.com/dkfans/keeperfx/issues
+    about: >-
+      This fork only adds a native macOS / arm64 build. Please report game bugs,
+      feature requests, and Windows/Linux issues to the official KeeperFX
+      project. Use this tracker only for problems specific to the macOS build.

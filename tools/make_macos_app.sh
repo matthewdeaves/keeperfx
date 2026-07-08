@@ -199,6 +199,23 @@ for macho in "$APP/Contents/MacOS/keeperfx" "$LIBS"/*.dylib; do
 done
 [ "$leaked" -eq 0 ] || { echo "bundling incomplete — see above" >&2; exit 1; }
 
+# --- Starter keeperfx.cfg (calmer default flash rate) ------------------------
+# Written next to the .app. The download normally drops next to an existing game
+# folder that already has a keeperfx.cfg, so this is for a fresh setup or anyone
+# who wants it: the canonical template with a gentler flash rate than upstream's
+# default (1), which strobes quite fast.
+CFG_SRC="$ROOT/config/keeperfx.cfg"
+CFG_OUT="$OUTDIR/keeperfx.cfg"
+if [ -f "$CFG_SRC" ]; then
+    {
+        echo "; Optional starter config for the macOS build — only used if your game"
+        echo "; folder has no keeperfx.cfg. Flash rates are raised from the upstream"
+        echo "; default (1) for gentler on-screen blinking; delete these to go back."
+        sed -E 's/^GUI_BLINK_RATE=.*/GUI_BLINK_RATE=5/; s/^NEUTRAL_FLASH_RATE=.*/NEUTRAL_FLASH_RATE=5/' "$CFG_SRC"
+    } > "$CFG_OUT"
+    echo "== wrote starter config: $CFG_OUT (GUI_BLINK_RATE=5, NEUTRAL_FLASH_RATE=5) =="
+fi
+
 echo "== done: $APP =="
 echo "   bundled dylibs: $(ls "$APP/Contents/libs" | wc -l | tr -d ' ')"
 # Verify the whole bundle carries a valid signature (this is what macOS checks

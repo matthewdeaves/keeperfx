@@ -120,6 +120,8 @@ jobs:
           4. Double-click it. If the folder is privacy-protected (Desktop/Documents/Downloads), click **Allow** when macOS asks for file access.
 
           Requires an Apple Silicon Mac and your own original Dungeon Keeper data plus a KeeperFX data release. This bundle is the native engine and carries its own KeeperFX config defaults (fxdata/creatrs), so it works even dropped next to an older data install.
+
+          **Optional:** `keeperfx.cfg` is a starter config with a gentler GUI flash rate. Only use it if your game folder doesn't already have a `keeperfx.cfg` — your existing one is left untouched.
           EOF
           printf '\nBuilt from commit %s.\n' "$SHA" >> "$RUNNER_TEMP/notes.md"
           TAG="${{ steps.rel.outputs.tag }}"
@@ -128,7 +130,7 @@ jobs:
             gh release delete "$TAG" --yes --cleanup-tag || true
             PRE="--prerelease"
           fi
-          gh release create "$TAG" dist/KeeperFX.app.zip \
+          gh release create "$TAG" dist/KeeperFX.app.zip dist/keeperfx.cfg \
             --title "${{ steps.rel.outputs.title }}" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             --target "$GITHUB_SHA" $PRE

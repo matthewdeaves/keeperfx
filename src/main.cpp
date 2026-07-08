@@ -1750,6 +1750,9 @@ static short process_command_line(unsigned short argc, char *argv[])
   else
       strcpy(keeper_runtime_directory, ".");
 
+  // Route saves/screenshots to per-user dirs now that the runtime dir is known.
+  PlatformManager_SetupUserDataDirectories();
+
   AssignCpuKeepers = 0;
   SoundDisabled = 0;
   // Note: the working log file is set up in LbBullfrogMain

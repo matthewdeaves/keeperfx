@@ -1,58 +1,91 @@
-# KeeperFX
+# KeeperFX — Apple Silicon fork
 
-![KeeperFX Logo](/docs/assets/readme-banner.png)
+> **Personal, unofficial fork. Use at your own risk.**
+>
+> Dungeon Keeper was a favourite game of my childhood, and I wanted a version of
+> [KeeperFX](https://github.com/dkfans/keeperfx) — the open-source Dungeon Keeper
+> remake — that builds and runs **natively on Apple Silicon (arm64)**. I'm not a
+> KeeperFX expert; I've just made judgment calls along the way and tried to keep
+> the changes clean rather than hacky.
+>
+> This fork is **not affiliated with or endorsed by** the upstream KeeperFX team.
+> It comes with no guarantees or support: it may break, and the macOS app is
+> ad-hoc signed (not notarized). Nearly all of the game is upstream's work — I've
+> only touched what was needed to get it building and running natively on Apple
+> Silicon.
+>
+> **This fork is temporary.** Native macOS support is being worked on upstream;
+> once the official project ships a macOS / Apple Silicon build, this fork will
+> have done its job and I'll stop maintaining it. Until then I keep it building
+> and roughly in step with upstream.
+>
+> **If you just want to play KeeperFX, use the official project:**
+> **https://github.com/dkfans/keeperfx**
 
-![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
-![Release](https://img.shields.io/github/v/release/dkfans/keeperfx?style=flat-square)
-![Downloads](https://img.shields.io/github/downloads/dkfans/keeperfx/total?style=flat-square)
-[![Discord](https://img.shields.io/discord/480505152806191114?style=flat-square)](https://discord.gg/hE4p7vy2Hb)
+## Download (Apple Silicon)
 
-[Visit our website](https://keeperfx.net) | [Join our Discord (Keeper Klan)](https://discord.gg/hE4p7vy2Hb)
+A prebuilt, self-contained **`KeeperFX.app`** is published here — no build needed:
 
+**https://github.com/matthewdeaves/keeperfx/releases/latest**
 
-## Intro
-KeeperFX (Dungeon Keeper Fan eXpansion) is an open-source project that aims to fix up, enhance and modernize 
-the classic dungeon management game, [Dungeon Keeper](https://en.wikipedia.org/wiki/Dungeon_Keeper).
-This project is dedicated to providing an improved and customizable gaming experience while staying true to the spirit of the original game.
+(Versioned releases are tagged `macos-v*`; that link always resolves to the
+newest one.)
 
-KeeperFX is a standalone game but requires a copy of the original game files as proof of ownership.
-These files can be automatically copied from your old CDs, or from a digital edition like the ones from EA or GOG.
+Drop it next to your existing KeeperFX data (and the original Dungeon Keeper
+files) and double-click. First-launch Gatekeeper and folder-layout notes are
+under [macOS: running](#macos-running); or [build it yourself](#macos-build-from-source).
 
-Originally, KeeperFX started out as a decompilation project, where we took the original game executables and reversed them back into usable code. 
-Currently the whole codebase of Dungeon Keeper is remade and all code has been rewritten.
+## Changes in this fork
 
+Everything below is what this fork adds on top of upstream `dkfans/keeperfx`; the
+game itself, and Windows/Linux support, are upstream's work. This is the one
+place I keep updated as the fork evolves.
 
-## Features
-- Windows 7/10/11 support
-- Native Linux and macOS (Apple Silicon / arm64) builds
-- Higher screen resolutions
-- Increased FPS, decoupled gfx and game logic
-- Improved and modernized controls
-- Many bugfixes
-- Map, campaign and modding customizability
-- Improved AI
-- Modern multiplayer protocol
-- Additional campaigns, maps, creatures and other content
-- ...
+### Apple Silicon / arm64
+- **Native arm64 build** (`macos.mk`) — a real Mach-O binary, no Rosetta or
+  emulation — plus a self-contained, self-locating `KeeperFX.app` that bundles
+  its dylibs and its own config defaults (so it still works dropped next to an
+  older KeeperFX data install).
+- **arm64 correctness fixes** — unaligned-access (SIGBUS) crashes in the
+  isometric render, sprite/pixel draw, computer-player gold scan, and the
+  named-field config framework; in-memory-only packed structs unpacked for
+  natural alignment. x86 behaviour is unchanged.
+- **Safety fixes** — bounds-check the RNC decompressor and the script
+  command-name lookup; guard the power-hand path against a bad dungeon pointer or
+  out-of-range creature model.
 
+### User-data locations
+- Saves, settings, high scores, netplay config and screenshots now write to the
+  proper per-user location instead of the game folder, so the install can be
+  read-only and replacing the app never touches your saves. Existing saves are
+  migrated once (copied, never moved).
+  - **macOS:** `~/Library/Application Support/KeeperFX`
+  - **Linux:** `$XDG_DATA_HOME/keeperfx` (default `~/.local/share/keeperfx`)
+  - **Windows:** `%APPDATA%\KeeperFX`
+- On macOS, screenshots go to Application Support, **not** `~/Pictures`, so taking
+  one never triggers a privacy permission prompt mid-game. Full rationale in
+  [`docs/adr/0001-macos-userdata-locations.md`](docs/adr/0001-macos-userdata-locations.md).
 
-## How to play
+### Packaging & CI
+- Optional starter `keeperfx.cfg` shipped with the macOS download, with a calmer
+  GUI flash rate (5 vs upstream's 1). Only used if the game folder has none.
+- CI builds and checks the macOS, Windows and Linux builds on every push to
+  master.
 
-Installation instructions and a FAQ can be found on the [Github Wiki](https://github.com/dkfans/keeperfx/wiki).
+## Requirements
 
-You will need the original Dungeon Keeper files, either from an old CD or from the digital edition available on
-[EA](https://www.ea.com/games/dungeon-keeper/dungeon-keeper),
-[GOG](https://www.gog.com/game/dungeon_keeper)
-or [Steam](https://store.steampowered.com/app/1996630/Dungeon_Keeper_Gold/).
+Like every KeeperFX build, this needs a game folder containing the KeeperFX data
+**plus the original Dungeon Keeper files** (from an old CD, or the digital
+editions on [GOG](https://www.gog.com/game/dungeon_keeper) /
+[EA](https://www.ea.com/games/dungeon-keeper/dungeon-keeper) /
+[Steam](https://store.steampowered.com/app/1996630/Dungeon_Keeper_Gold/)) listed
+in [`docs/files_required_from_original_dk.txt`](docs/files_required_from_original_dk.txt).
+The install gate is simply the presence of `data/bluepal.dat`.
 
+I built and tested this fork against **Dungeon Keeper Gold** from
+[GOG](https://www.gog.com/game/dungeon_keeper).
 
-## macOS (Apple Silicon)
-
-This fork adds a **native Apple Silicon (arm64) build** — a real Mach-O binary,
-no Rosetta or emulation. It compiles, runs, and plays. See
-[`docs/MACOS_ARM64_PORT.md`](docs/MACOS_ARM64_PORT.md) for the full write-up.
-
-### Build from source
+## macOS: build from source
 
 ```sh
 brew install pkg-config sdl2 sdl2_image sdl2_mixer sdl2_net ffmpeg luajit \
@@ -61,33 +94,23 @@ brew install pkg-config sdl2 sdl2_image sdl2_mixer sdl2_net ffmpeg luajit \
 make -f macos.mk -j"$(sysctl -n hw.ncpu)"   # -> bin/keeperfx (arm64 Mach-O)
 ```
 
-CI builds and verifies this on every push (`.github/workflows/build-macos.yml`),
-and uploads a ready-to-run `KeeperFX.app` as a build artifact.
+The full write-up is in [`docs/MACOS_ARM64_PORT.md`](docs/MACOS_ARM64_PORT.md).
 
-### Package a self-contained `KeeperFX.app`
+## macOS: package a self-contained `KeeperFX.app`
 
 ```sh
 tools/make_macos_app.sh          # -> dist/KeeperFX.app
 ```
 
-This bundles the engine's libraries (via `dylibbundler`, incl. the SDL3 that
+This bundles the engine's libraries (via `dylibbundler`, including the SDL3 that
 `sdl2-compat` loads at runtime) and ad-hoc signs it, so the `.app` runs on any
-Apple Silicon Mac with **no Homebrew installed**. It also carries KeeperFX's own
-config defaults (`fxdata/`, `creatrs/`) inside `Contents/Resources`; the engine
-falls back to those when a config file is missing from the game folder, so the
-app works even dropped next to an **older KeeperFX data install** (which is why
-a folder lacking a newer file like `fxdata/sounds.cfg` no longer loses sounds).
+Apple Silicon Mac with **no Homebrew installed**.
 
-### Running: required game files & layout
-
-Like every KeeperFX build, the macOS build needs a game directory populated with
-the KeeperFX data **plus the original Dungeon Keeper files** listed in
-[`docs/files_required_from_original_dk.txt`](docs/files_required_from_original_dk.txt).
-The install gate is simply the presence of `data/bluepal.dat`.
+## macOS: running
 
 `KeeperFX.app` is a *drop-in* engine: on startup it locates itself and changes
-the working directory to the folder that contains the `.app`, so it finds the
-game data sitting next to it. The layout is:
+the working directory to the folder containing the `.app`, so it finds the game
+data next to it. The layout is:
 
 ```
 YourKeeperFX/            <- any folder (including Desktop/Documents)
@@ -97,75 +120,30 @@ YourKeeperFX/            <- any folder (including Desktop/Documents)
 ```
 
 Double-click `KeeperFX.app`. On first launch:
-- **If you downloaded the `.app`**, macOS 15/26 blocks it with "Apple could not
+
+- **If you downloaded the `.app`**, macOS blocks it with "Apple could not
   verify…" (it's ad-hoc signed, not notarized). Clear the download flag once — in
-  Terminal: `xattr -dr com.apple.quarantine /path/to/KeeperFX.app` — or double-click,
-  then System Settings → Privacy & Security → **Open Anyway**. (A locally built
-  `.app` has no such flag and just opens.)
+  Terminal: `xattr -dr com.apple.quarantine /path/to/KeeperFX.app` — or
+  double-click, then System Settings → Privacy & Security → **Open Anyway**. (A
+  locally built `.app` has no such flag and just opens.)
 - If the folder is privacy-protected (Desktop, Documents, Downloads), macOS asks
-  to let KeeperFX access files there — click **Allow**. It then runs from any
-  location.
+  to let KeeperFX access files there — click **Allow**.
 
 > Tip: if you have GOG's *Dungeon Keeper Gold* installed, the required original
-> files ship **uncompressed** inside the app bundle at
+> files ship **uncompressed** inside its app bundle at
 > `Contents/Resources/game/{DATA,SOUND}/` (and the `keeper0*.ogg` soundtrack in
-> its game root) — no CD-image extraction needed. Copy them in with lowercase names.
+> its game root) — no CD-image extraction needed. Copy them in with lowercase
+> names.
 
+## Windows / Linux
 
-## Development
-To get started with KeeperFX development, refer to the [Development Guide](https://github.com/dkfans/keeperfx/wiki/Building-KeeperFX) for 
-detailed instructions on setting up a development environment and building KeeperFX from source.
-
-If you wish to discuss development, you can join the [Keeper Klan discord](https://discord.gg/hE4p7vy2Hb) and ask to 
-be added to the KeeperFX development channel.
-
-
-## Components
-| Component | Language | Info |
-|---|---|---|
-| [KeeperFX](https://github.com/dkfans/keeperfx) | C, C++ | - |
-| [Launcher](https://github.com/dkfans/keeperfx-launcherwx) | C++ | Official Launcher to edit settings and start the game with run options. |
-| [FXGraphics](https://github.com/dkfans/FXGraphics) | - | Sources of KeeperFX graphics files. |
-| [FXSounds](https://github.com/dkfans/FXsounds) | - | Sources of KeeperFX audio files. |
-| [Masterserver](https://github.com/dkfans/keeperfx-masterserver) | PHP (CLI) | Multiplayer masterserver. Allows players to easily find public lobbies of others. |
-| [Website](https://github.com/dkfans/keeperfx-website) | PHP | https://keeperfx.net |
-
-
-## Tools
-| Tool | Usage |
-|---|---|
-| sndbanker | Makes usable ingame sounds from SFX archives. |
-| po2ngdat | Converts `.po` files (language) to `.dat`. |
-| png2bestpal | Decides the best in-game color palette for an image and creates a `.pal` file. |
-| png2ico | Converts `.png` files to `.ico`. |
-| pngpal2raw | Creates a `.raw` image file that can be used by the game from a `.png` and a `.pal` (palette) file. The palette file can be created with _png2bestpal_. |
-| rnctools | Handles the RNC compression of many original DK data files. |
-| dkillconv | An unfinished tool to convert a map to a text based format. |
-
-
-## Further Improvements
-KeeperFX could be further improved in these key areas:
-- Multiplayer performance and features
-- Expand and improve AI / Computer player behavior
-- Improve pathfinding performance
-- Expand creative freedom for modders even further
-- Native cross-platform support
-- Improve code readability and maintainability
-- Lua support
-- ...
-
-
-## Contributing
-We welcome contributions from the community to improve and expand KeeperFX.
-- Report bugs by opening [issues](https://github.com/dkfans/keeperfx/issues).
-- Submit feature requests and discuss potential improvements.
-- Contribute code by creating pull requests. 
-
-
-## Code Signing Policy
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
-
+**Use the official project, not this fork.** This fork exists for the macOS /
+Apple Silicon build. On Windows and Linux, upstream KeeperFX is the real thing —
+get it from **https://github.com/dkfans/keeperfx**. I do my best to keep the
+Windows and Linux builds working here (CI checks them on every push, and they
+build with `make` and `make -f linux.mk`), but there's no reason to use this fork
+over upstream on those platforms.
 
 ## License
-This project is licensed under the [GNU General Public License v2.0](LICENSE).
-Feel free to use, modify, and distribute it according to the terms of this license.
+
+GNU General Public License v2.0, same as upstream — see [LICENSE](LICENSE).

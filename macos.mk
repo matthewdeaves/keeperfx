@@ -327,8 +327,15 @@ WARNFLAGS = -Wall -Wextra -Wno-unused-parameter -Wno-unknown-pragmas -Wno-sign-c
 # would otherwise hide and which the POSIX code paths rely on.
 DARWINFLAGS = -D_XOPEN_SOURCE=700 -D_DARWIN_C_SOURCE
 
-KFX_CFLAGS += -DBFDEBUG_LEVEL=0 -O3 $(ARCHFLAGS) -std=gnu11 $(DARWINFLAGS) $(KFX_INCLUDES) $(WARNFLAGS)
-KFX_CXXFLAGS += -DBFDEBUG_LEVEL=0 -O3 $(ARCHFLAGS) -std=gnu++20 $(DARWINFLAGS) $(KFX_INCLUDES) $(WARNFLAGS)
+# Emit a .d sidecar per object listing every header it pulled in, so touching a
+# shared header (e.g. a struct-layout change) recompiles every dependent unit.
+# Without this, incremental builds across header changes silently link mismatched
+# struct layouts together -- which is exactly how a stale build crashes at runtime.
+# -MP adds phony targets for headers so a later header rename doesn't wedge the build.
+DEPFLAGS = -MMD -MP
+
+KFX_CFLAGS += -DBFDEBUG_LEVEL=0 -O3 $(ARCHFLAGS) -std=gnu11 $(DARWINFLAGS) $(KFX_INCLUDES) $(WARNFLAGS) $(DEPFLAGS)
+KFX_CXXFLAGS += -DBFDEBUG_LEVEL=0 -O3 $(ARCHFLAGS) -std=gnu++20 $(DARWINFLAGS) $(KFX_INCLUDES) $(WARNFLAGS) $(DEPFLAGS)
 
 # No -ld_classic needed: the in-memory pack(1) tables that embed pointers are
 # unpacked in the shared headers, so the modern linker (ld-prime) emits them fine.
@@ -365,7 +372,7 @@ TOML_OBJECTS = $(patsubst deps/centitoml/%.c,obj/centitoml/%.o,$(TOML_SOURCES))
 TOML_INCLUDES = \
 	-Ideps/centijson/include
 
-TOML_CFLAGS += -O3 $(ARCHFLAGS) -std=gnu11 $(TOML_INCLUDES) -Wall -Wextra -Wno-unused-parameter
+TOML_CFLAGS += -O3 $(ARCHFLAGS) -std=gnu11 $(TOML_INCLUDES) -Wall -Wextra -Wno-unused-parameter $(DEPFLAGS)
 
 all: bin/keeperfx
 
@@ -388,6 +395,10 @@ $(KFX_CXX_OBJECTS): obj/%.o: src/%.cpp src/ver_defs.h | obj
 
 $(TOML_OBJECTS): obj/centitoml/%.o: deps/centitoml/%.c | obj/centitoml
 	$(CC) $(TOML_CFLAGS) -c $< -o $@
+
+# Pull in the auto-generated header-dependency sidecars (.d) from -MMD. Absent on
+# the first build (the pattern rules still fire); present on every rebuild after.
+-include $(KFX_OBJECTS:.o=.d) $(TOML_OBJECTS:.o=.d)
 
 bin obj obj/centitoml:
 	$(MKDIR) $@

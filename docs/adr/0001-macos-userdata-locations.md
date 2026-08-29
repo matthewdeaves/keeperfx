@@ -63,10 +63,11 @@ action.
 `keeper_userdata_directory`. When it is empty the resolver behaves exactly as
 before; when set, `FGrp_Save` and `FGrp_SShots` resolve under it (in `save/` and
 `scrshots/` subdirs). A single per-platform entry point,
-`setup_userdata_directories()` (declared in `platform.h`, called once at startup
-after `keeper_runtime_directory` is known), creates the dirs, sets the global,
-and migrates any existing saves once (copy, never move). It is implemented in
-`src/linux.cpp` (macOS and Linux) and `src/windows.cpp` (Windows).
+`IPlatform::SetupUserDataDirectories()` (called once at startup via
+`PlatformManager_SetupUserDataDirectories()`, after `keeper_runtime_directory`
+is known), creates the dirs, sets the global, and migrates any existing saves
+once (copy, never move). `PlatformLinux` implements it for macOS and Linux —
+macOS overrides only `GetUserDataBaseDir()` — and `PlatformWindows` for Windows.
 
 Two supporting fixes shipped with this:
 - `create_directory_for_file` (`src/bflib_fileio.c`) skips the empty leading

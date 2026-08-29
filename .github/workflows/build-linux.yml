@@ -10,7 +10,9 @@ on:
     paths:
       - 'src/**'
       - 'deps/**'
-      - 'linux.mk'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'build/cmake/**'
       - 'version.mk'
       - '.github/workflows/build-linux.yml'
   workflow_dispatch:
@@ -34,8 +36,13 @@ jobs:
         run: |
           set -eux
           sudo apt update
+          # SDL3 is not in Ubuntu 24.04 apt, so Dependencies.cmake builds it from
+          # source (FetchContent). The libx11/gl/audio and image/mixer decoder
+          # packages below are SDL3's build deps. SDL_net is gone (native sockets).
           sudo apt install -y \
             build-essential \
+            cmake \
+            ninja-build \
             pkg-config \
             curl \
             libavcodec-dev \
@@ -46,12 +53,34 @@ jobs:
             libminizip-dev \
             libnatpmp-dev \
             libspng-dev \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
-            libsdl2-net-dev \
             libswresample-dev \
             libminiupnpc-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxfixes-dev \
+            libxss-dev \
+            libxtst-dev \
+            libxkbcommon-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libdrm-dev \
+            libgbm-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libdbus-1-dev \
+            libudev-dev \
+            libpng-dev \
+            libjpeg-dev \
+            libogg-dev \
+            libvorbis-dev \
+            libflac-dev \
+            libmpg123-dev \
+            libopusfile-dev \
+            libssl-dev \
+            libzstd-dev \
             zlib1g-dev
 
       - name: Build
@@ -64,10 +93,12 @@ jobs:
           PACKAGE_SUFFIX=CI_$(git rev-parse --short=7 HEAD)
           ARTIFACT_NAME=keeperfx-linux_x86_64-${VER_MAJOR}_${VER_MINOR}_${VER_RELEASE}_${BUILD_NUMBER}_${PACKAGE_SUFFIX}
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
-          make BUILD_NUMBER="$BUILD_NUMBER" VER_SUFFIX="$PACKAGE_SUFFIX" -f linux.mk
+          cmake -S . -B out -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DBUILD_NUMBER="$BUILD_NUMBER" -DPACKAGE_SUFFIX="$PACKAGE_SUFFIX"
+          cmake --build out --target keeperfx -j"$(nproc)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
-          path: bin/keeperfx
+          path: out/keeperfx

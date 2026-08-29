@@ -17,12 +17,14 @@ standalone. Concretely:
 - **64-bit clean.** The Linux build compiles with `-march=x86-64`; there is no
   32-bit lock-in. (Critical, since macOS has had zero 32-bit support since
   Catalina.)
-- **SDL2 is the platform layer** for video, input, audio and networking. The
-  renderer is software/surface based — no OpenGL or DirectX in the hot path.
+- **SDL3 is the platform layer** for video, input and audio (upstream migrated
+  off SDL2 in #5085; networking now uses native BSD sockets rather than SDL_net).
+  The renderer is software/surface based — no OpenGL or DirectX in the hot path.
 - The platform-specific spots are already guarded: `src/bflib_cpu.c` (`cpuid`
   asm behind `__i386__ || __x86_64__`), `src/bflib_crash.c` (POSIX path with a
-  non-Linux fallback), `src/linux.cpp` (pure POSIX, reused as-is), and every
-  `#include <windows.h>` sits behind `#ifdef _WIN32` / `__MINGW32__`.
+  non-Linux fallback), `src/kfx/platform/PlatformLinux.cpp` (pure POSIX, reused
+  as-is via `PlatformMacOS`), and every `#include <windows.h>` sits behind
+  `#ifdef _WIN32` / `__MINGW32__`.
 
 ## Source changes that *were* needed
 
@@ -43,7 +45,7 @@ help a native Linux build and change no behaviour on Windows):
 
 1. **Xcode Command Line Tools:** `xcode-select --install`
 2. **Homebrew:** https://brew.sh
-3. Homebrew libs: `pkg-config sdl2 sdl2_image sdl2_mixer sdl2_net ffmpeg luajit
+3. Homebrew libs: `pkg-config sdl3 sdl3_image sdl3_mixer ffmpeg luajit
    openal-soft libspng minizip miniupnpc libnatpmp zlib curl` (the build resolves
    every dependency through `pkg-config`, so it's required). Add `dylibbundler`
    for the packaging step below, and `innoextract`/`sevenzip` if you extract
@@ -92,25 +94,24 @@ What it does, and the non-obvious bits it handles:
 
 - **Bundles the dylibs.** `dylibbundler` copies every non-system dylib into
   `Contents/libs` and rewrites the engine's load paths to `@executable_path/../libs`.
-- **SDL3, which `dylibbundler` can't see.** Homebrew's `sdl2` is actually
-  `sdl2-compat` — a thin `libSDL2` that **`dlopen`s SDL3 at runtime**, so SDL3 is
-  not a link-time dependency and the bundling pass misses it (the shim then dies
-  in its initializer). The shim's first search path is `@loader_path/libSDL3.dylib`
-  (note: *unversioned*), so the script copies the real `libSDL3*.dylib` in as
-  `Contents/libs/libSDL3.dylib` (globbing the SONAME, and hard-failing if it's
-  absent) and the shim finds it with no env vars or rpath.
+- **SDL3 comes along on its own now.** The engine links `libSDL3` directly, so
+  `dylibbundler` follows the load command and bundles it like any other dylib.
+  (Before upstream's SDL3 migration this needed a manual copy: Homebrew's `sdl2`
+  was `sdl2-compat`, a shim that `dlopen`ed SDL3 at runtime, so SDL3 was not a
+  link-time dependency and the bundling pass missed it entirely. That workaround
+  is gone.) The script still hard-fails if `libSDL3` is somehow absent.
 - **KeeperFX's own config defaults.** The script also copies `config/fxdata/` and
   `config/creatrs/` (GPL KeeperFX files, not copyrighted DK assets) into
   `Contents/Resources`. The engine records that dir (`keeper_defaults_directory`,
-  set by `macos_chdir_to_bundle_parent`) and the file resolver falls back to it
+  set by `PlatformMacOS::EarlyStartup`) and the file resolver falls back to it
   for `FGrp_FxData`/`FGrp_CrtrData` when a file is missing from the user's game
   folder — so the app works even next to an older data install that predates a
   config file this engine needs (e.g. `fxdata/sounds.cfg`). User/campaign/mod
   copies are resolved first, so overrides still win; it's inert on Windows/Linux.
 - **A drop-in, self-locating engine.** Finder starts apps with `cwd=/`, but the
   game data lives in the folder the user dropped the `.app` into. The engine is
-  the bundle's main executable and, on startup, `macos_chdir_to_bundle_parent()`
-  (in `src/linux.cpp`) resolves its own path via `_NSGetExecutablePath`; if it is
+  the bundle's main executable and, on startup, `PlatformMacOS::EarlyStartup()`
+  (in `src/kfx/platform/`) resolves its own path via `_NSGetExecutablePath`; if it is
   running from inside a `*.app/Contents/MacOS/`, it `chdir`s to the folder
   containing the `.app`. Run outside a bundle (a developer launching
   `bin/keeperfx` directly) and the working directory is left untouched. This

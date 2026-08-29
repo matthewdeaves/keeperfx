@@ -13,6 +13,10 @@ if(WIN32)
 elseif(UNIX AND NOT APPLE)
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX "/PlatformWindows\\.cpp$")
 endif()
+# PlatformMacOS.cpp includes <mach-o/dyld.h>; it is built only by macos.mk.
+if(NOT APPLE)
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX "/PlatformMacOS\\.cpp$")
+endif()
 
 add_executable(keeperfx       ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 add_executable(keeperfx_hvlog ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})

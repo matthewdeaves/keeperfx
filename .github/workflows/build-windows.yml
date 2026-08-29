@@ -11,6 +11,9 @@ on:
       - 'src/**'
       - 'deps/**'
       - 'Makefile'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'build/cmake/**'
       - 'version.mk'
       - '.github/workflows/build-windows.yml'
   workflow_dispatch:
@@ -36,7 +39,7 @@ jobs:
         run: |
           set -eux
           sudo apt update
-          sudo apt install -y build-essential g++-mingw-w64-i686 libpng16-16t64 7zip
+          sudo apt install -y build-essential g++-mingw-w64-i686 cmake ninja-build libpng16-16t64 7zip
 
       - name: Build
         run: |
@@ -48,16 +51,16 @@ jobs:
           PACKAGE_SUFFIX=CI_$(git rev-parse --short=7 HEAD)
           ARTIFACT_NAME=keeperfx-windows_x86-${VER_MAJOR}_${VER_MINOR}_${VER_RELEASE}_${BUILD_NUMBER}_${PACKAGE_SUFFIX}
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
-          # First pass primes the downloaded deps (enet6, curl, ...). The Makefile
-          # only ties those headers to a couple of source files, so under a
-          # parallel build another .c that includes them can compile before the
-          # tarball is extracted; -k tolerates that race while the deps land.
-          # The second pass then builds cleanly. (Same approach as build-prototype.)
-          make BUILD_NUMBER="$BUILD_NUMBER" PACKAGE_SUFFIX="$PACKAGE_SUFFIX" -k standard || true
-          make BUILD_NUMBER="$BUILD_NUMBER" PACKAGE_SUFFIX="$PACKAGE_SUFFIX" standard
+          # Compile with CMake (MinGW-w64 i686 cross-compile), as upstream's own
+          # Windows job does since the CMake migration (#5083). This is a compile
+          # check, so it builds the binaries only — no data assembly or CPack.
+          cmake -S . -B out -G Ninja -DCMAKE_TOOLCHAIN_FILE=build/cmake/toolchains/mingw32.cmake \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DBUILD_NUMBER="$BUILD_NUMBER" -DPACKAGE_SUFFIX="$PACKAGE_SUFFIX"
+          cmake --build out --target keeperfx -j"$(nproc)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
-          path: bin/keeperfx.exe
+          path: out/keeperfx.exe

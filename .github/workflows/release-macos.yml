@@ -40,7 +40,7 @@ jobs:
           set -eux
           brew install \
             pkg-config \
-            sdl2 sdl2_image sdl2_mixer sdl2_net \
+            sdl3 sdl3_image sdl3_mixer \
             ffmpeg \
             luajit \
             openal-soft \

@@ -28,6 +28,10 @@ if(NOT WIN32)
     configure_file("${KFX_ICON_C}.in" "${KFX_ICON_C}" COPYONLY)
     list(APPEND KEEPERFX_SOURCES_C "${KFX_ICON_C}")
 endif()
+# PlatformMacOS.cpp includes <mach-o/dyld.h>; it is built only by macos.mk.
+if(NOT APPLE)
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX "/PlatformMacOS\\.cpp$")
+endif()
 
 add_executable(keeperfx       ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 add_executable(keeperfx_hvlog ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})

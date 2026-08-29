@@ -4,8 +4,8 @@
 # macos.mk links against Homebrew dylibs by absolute path; this script bundles
 # those dylibs and rewrites the load paths (dylibbundler) so the .app runs on any
 # arm64 Mac with no Homebrew. The engine is the bundle's main executable and
-# chdir's to the folder containing the .app on startup (macos_chdir_to_bundle_parent
-# in src/linux.cpp), so users drop KeeperFX.app next to their game data and run it.
+# chdir's to the folder containing the .app on startup (PlatformMacOS::EarlyStartup
+# in src/kfx/platform/), so users drop KeeperFX.app next to their game data and run it.
 #
 # Usage: tools/make_macos_app.sh [path/to/keeperfx-binary] [output-dir]
 #   defaults: bin/keeperfx   ->   dist/KeeperFX.app
@@ -76,30 +76,21 @@ add_runtime_dylib() {
         --install-path "@executable_path/../libs" >/dev/null
 }
 
-# --- SDL3 (dlopen'd by the sdl2-compat shim as @loader_path/libSDL3.dylib) ---
-# The shim's first search path is @loader_path, i.e. right next to libSDL2 in
-# Contents/libs, so the unversioned name is what it looks for.
-if [ -f "$LIBS/libSDL2-2.0.0.dylib" ]; then
-    SDL3_PREFIX="$(brew --prefix sdl3 2>/dev/null)"
-    # Glob the real SONAME instead of hardcoding a version: a future sdl3 major
-    # bump would move libSDL3.0.dylib and otherwise ship a silently-broken bundle.
-    SDL3_SRC="$(ls "$SDL3_PREFIX"/lib/libSDL3*.dylib 2>/dev/null | head -1)"
-    if [ -z "$SDL3_SRC" ] || [ ! -f "$SDL3_SRC" ]; then
-        echo "error: libSDL3 not found under '$SDL3_PREFIX' — the sdl2-compat shim dlopens it (brew install sdl3)" >&2
-        exit 1
-    fi
-    add_runtime_dylib "$SDL3_SRC" "libSDL3.dylib"
-    # The shim dlopens exactly @loader_path/libSDL3.dylib; a missing copy = crash on a non-Homebrew Mac.
-    test -f "$LIBS/libSDL3.dylib" \
-        || { echo "error: libSDL3.dylib was not bundled into Contents/libs" >&2; exit 1; }
-fi
+# --- SDL3 -------------------------------------------------------------------
+# The binary links libSDL3 directly (upstream migrated off SDL2 in #5085), so
+# dylibbundler already pulled it in by following the load commands. Nothing is
+# dlopen'd any more -- the old sdl2-compat shim, which loaded SDL3 at runtime
+# from @loader_path and had to be bundled by hand, is gone. Verify the direct
+# dependency landed rather than trusting it silently.
+test -n "$(ls "$LIBS"/libSDL3.*dylib 2>/dev/null)" \
+    || { echo "error: libSDL3 was not bundled into Contents/libs" >&2; exit 1; }
 
-# --- SDL2_mixer audio decoders (loaded at runtime) ---------------------------
-# SDL2_mixer pulls in its Ogg/FLAC/MP3/Opus/MOD decoders at runtime, so on a Mac
+# --- SDL3_mixer audio decoders (loaded at runtime) ---------------------------
+# SDL3_mixer pulls in its Ogg/FLAC/MP3/Opus/MOD decoders at runtime, so on a Mac
 # without Homebrew they must be bundled or music goes silent. Mirror the decoder
 # set into Contents/libs under both versioned and unversioned SONAMEs (mixer may
 # request either); dylibbundler then rewrites each one's own dependencies.
-if [ -f "$LIBS/libSDL2_mixer-2.0.0.dylib" ]; then
+if [ -n "$(ls "$LIBS"/libSDL3_mixer.*dylib 2>/dev/null)" ]; then
     BREW_LIB="$(brew --prefix)/lib"
     for stem in libvorbisfile libvorbis libogg libFLAC libmpg123 \
                 libopusfile libopus libxmp libmodplug libwavpack libfluidsynth; do

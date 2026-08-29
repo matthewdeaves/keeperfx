@@ -2,7 +2,7 @@
 # Usage: make -f macos.mk            (uses clang, Homebrew libraries)
 #
 # Requires Homebrew packages:
-#   pkg-config sdl2 sdl2_image sdl2_mixer sdl2_net ffmpeg luajit
+#   pkg-config sdl3 sdl3_image sdl3_mixer ffmpeg luajit
 #   openal-soft libspng minizip miniupnpc libnatpmp zlib curl
 # The source-only deps (astronomy, centijson, enet6) are built into deps/
 # as arm64 static libraries by tools/build_macos_deps.sh.
@@ -179,6 +179,7 @@ src/game_loop.c \
 src/game_lghtshdw.c \
 src/game_merge.c \
 src/game_saves.c \
+src/game_update.cpp \
 src/gui_boxmenu.c \
 src/gui_draw.c \
 src/gui_frontbtns.c \
@@ -188,6 +189,7 @@ src/gui_parchment.c \
 src/gui_soundmsgs.cpp \
 src/gui_tooltips.c \
 src/gui_topmsg.c \
+src/gui_vscroll.c \
 src/highscores.c \
 src/kjm_input.c \
 src/lens_api.c \
@@ -201,8 +203,13 @@ src/kfx/lense/LuaLensEffect.cpp \
 src/kfx/lense/MistEffect.cpp \
 src/kfx/lense/OverlayEffect.cpp \
 src/kfx/lense/PaletteEffect.cpp \
+src/kfx/platform/PlatformLinux.cpp \
+src/kfx/platform/PlatformMacOS.cpp \
+src/kfx/platform/PlatformManager.cpp \
+src/kfx/platform/WindowSystemSDL.cpp \
+src/kfx/renderer/RendererManager.cpp \
+src/kfx/renderer/RendererSoftware.cpp \
 src/light_data.c \
-src/linux.cpp \
 src/lua_api.c \
 src/lua_api_lens.c \
 src/lua_api_map.c \
@@ -295,6 +302,7 @@ src/thing_physics.c \
 src/thing_shots.c \
 src/thing_stats.c \
 src/thing_traps.c \
+src/timer.c \
 src/value_util.c \
 src/vidfade.c \
 src/vidmode_data.cpp \
@@ -307,6 +315,7 @@ KFX_CXX_OBJECTS = $(patsubst src/%.cpp,obj/%.o,$(KFX_CXX_SOURCES))
 KFX_OBJECTS = $(KFX_C_OBJECTS) $(KFX_CXX_OBJECTS)
 
 KFX_INCLUDES = \
+	-Isrc \
 	-Ideps/centijson/include \
 	-Ideps/centitoml \
 	-Ideps/astronomy/include \
@@ -315,7 +324,9 @@ KFX_INCLUDES = \
 	$(shell $(PKG_CONFIG) --cflags-only-I luajit) \
 	$(shell $(PKG_CONFIG) --cflags-only-I libavformat) \
 	$(shell $(PKG_CONFIG) --cflags-only-I openal) \
-	$(shell $(PKG_CONFIG) --cflags-only-I sdl2)
+	$(shell $(PKG_CONFIG) --cflags-only-I sdl3) \
+	$(shell $(PKG_CONFIG) --cflags-only-I sdl3-image) \
+	$(shell $(PKG_CONFIG) --cflags-only-I sdl3-mixer)
 
 ARCHFLAGS = -arch arm64
 
@@ -346,10 +357,9 @@ KFX_LDFLAGS += \
 	-Ldeps/astronomy -lastronomy \
 	-Ldeps/centijson -ljson \
 	-Ldeps/enet6 -lenet6 \
-	$(shell $(PKG_CONFIG) --libs sdl2) \
-	$(shell $(PKG_CONFIG) --libs SDL2_mixer) \
-	$(shell $(PKG_CONFIG) --libs SDL2_net) \
-	$(shell $(PKG_CONFIG) --libs SDL2_image) \
+	$(shell $(PKG_CONFIG) --libs sdl3) \
+	$(shell $(PKG_CONFIG) --libs sdl3-mixer) \
+	$(shell $(PKG_CONFIG) --libs sdl3-image) \
 	$(shell $(PKG_CONFIG) --libs libavformat) \
 	$(shell $(PKG_CONFIG) --libs libavcodec) \
 	$(shell $(PKG_CONFIG) --libs libswresample) \

@@ -4,9 +4,10 @@ KeeperFX builds and runs **natively on Apple Silicon** — a Mach-O arm64 binary
 no Rosetta, no emulation. It has been verified end to end: it compiles, launches,
 loads the original Dungeon Keeper data, and runs into live gameplay.
 
-The macOS build reuses the native **Linux** build (`linux.mk`), which already does
-almost all of the cross-platform work; `macos.mk` is the Linux build adapted for
-arm64 + Homebrew.
+The macOS build follows the native **Linux** build, which already does almost all
+of the cross-platform work; `macos.mk` is that build adapted for arm64 + Homebrew.
+(Upstream has since moved Windows and Linux to CMake, but its CMake rejects Apple,
+so macOS stays on its own makefile.)
 
 ## Why this is tractable
 
@@ -140,13 +141,14 @@ CI runs this and uploads the `.app` as an artifact
   not required.
 - **Notarization.** Replace the ad-hoc signature with a Developer ID signature +
   `notarytool` so the `.app` opens without the Gatekeeper right-click dance.
-- **Share the source list.** Factor the common `KFX_SOURCES` out of `linux.mk`
-  so `macos.mk` can include it instead of duplicating (keeps them from drifting
-  when upstream adds/removes a source file).
+- **Share the source list.** `macos.mk` duplicates the engine source list that
+  upstream's `Makefile`/CMake carry, so the two drift when upstream adds or
+  removes a file. Deriving it from one place, or teaching upstream's CMake about
+  Apple, would remove the manual step below.
 
 ## Staying in sync with upstream
 
 The port adds only new files (`macos.mk`, `tools/build_macos_deps.sh`, this doc)
 plus a handful of guarded header edits, so pulling from upstream rarely
-conflicts. If upstream adds or removes a file in `linux.mk`'s `KFX_SOURCES`,
-mirror that one line into `macos.mk`.
+conflicts. If upstream adds or removes an engine source file, mirror that one
+line into `macos.mk`'s `KFX_SOURCES`.

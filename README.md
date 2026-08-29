@@ -140,7 +140,7 @@ Double-click `KeeperFX.app`. On first launch:
 Apple Silicon build. On Windows and Linux, upstream KeeperFX is the real thing —
 get it from **https://github.com/dkfans/keeperfx**. I do my best to keep the
 Windows and Linux builds working here (CI checks them on every push, and they
-build with `make` and `make -f linux.mk`), but there's no reason to use this fork
+build with CMake, as upstream does), but there's no reason to use this fork
 over upstream on those platforms.
 
 ## License

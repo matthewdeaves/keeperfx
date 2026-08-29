@@ -88,7 +88,7 @@ I built and tested this fork against **Dungeon Keeper Gold** from
 ## macOS: build from source
 
 ```sh
-brew install pkg-config sdl2 sdl2_image sdl2_mixer sdl2_net ffmpeg luajit \
+brew install pkg-config sdl3 sdl3_image sdl3_mixer ffmpeg luajit \
     openal-soft libspng minizip miniupnpc libnatpmp zlib curl dylibbundler
 ./tools/build_macos_deps.sh                 # one-time: builds astronomy/centijson/enet6
 make -f macos.mk -j"$(sysctl -n hw.ncpu)"   # -> bin/keeperfx (arm64 Mach-O)
@@ -102,9 +102,8 @@ The full write-up is in [`docs/MACOS_ARM64_PORT.md`](docs/MACOS_ARM64_PORT.md).
 tools/make_macos_app.sh          # -> dist/KeeperFX.app
 ```
 
-This bundles the engine's libraries (via `dylibbundler`, including the SDL3 that
-`sdl2-compat` loads at runtime) and ad-hoc signs it, so the `.app` runs on any
-Apple Silicon Mac with **no Homebrew installed**.
+This bundles the engine's libraries (via `dylibbundler`) and ad-hoc signs it, so
+the `.app` runs on any Apple Silicon Mac with **no Homebrew installed**.
 
 ## macOS: running
 

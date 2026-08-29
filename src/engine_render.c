@@ -5479,7 +5479,7 @@ void fill_status_sprite_indexes(struct Thing *thing, struct CreatureControl *cct
                 {
                     stati = get_creature_state_with_task_completion(thing);
                 }
-                if ((*(short *)&stati->display_thought_bubble == 1) || (thing_pointed_at == thing))
+                if (stati->display_thought_bubble || (thing_pointed_at == thing))
                 {
                     (*state_spridx) = stati->sprite_idx;
                 }

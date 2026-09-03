@@ -73,6 +73,13 @@ jobs:
           VER_SUFFIX=$(git rev-parse --short=7 HEAD)
           make -f macos.mk BUILD_NUMBER="$BUILD_NUMBER" VER_SUFFIX="$VER_SUFFIX" -j"$(sysctl -n hw.ncpu)"
           lipo -archs bin/keeperfx | grep -qw arm64
+          # Stamp the .app's Info.plist with the macos-v* tag itself (not
+          # upstream's version.mk number) so the installed bundle's version
+          # actually identifies which release was downloaded. Falls back to
+          # version.mk inside make_macos_app.sh for non-tag (dispatch) runs.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            export APP_VERSION="${GITHUB_REF_NAME#macos-v}"
+          fi
           ./tools/make_macos_app.sh
           # the shipped config defaults must have been bundled into the app
           test -f dist/KeeperFX.app/Contents/Resources/fxdata/sounds.cfg

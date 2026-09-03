@@ -26,10 +26,19 @@ if ! command -v dylibbundler >/dev/null 2>&1; then
     exit 1
 fi
 
-VER_MAJOR=$(grep -E '^VER_MAJOR=' "$ROOT/version.mk" | cut -d= -f2)
-VER_MINOR=$(grep -E '^VER_MINOR=' "$ROOT/version.mk" | cut -d= -f2)
-VER_RELEASE=$(grep -E '^VER_RELEASE=' "$ROOT/version.mk" | cut -d= -f2)
-VERSION="${VER_MAJOR}.${VER_MINOR}.${VER_RELEASE}"
+# Info.plist version: defaults to version.mk (upstream's engine version), but
+# the fork's own macos-v* release tag is the number that actually identifies a
+# downloaded .app, so release-macos.yml overrides this via APP_VERSION when
+# packaging a tagged release. Keep the version.mk fallback for local/dev builds
+# that have no tag to hand.
+if [ -n "${APP_VERSION:-}" ]; then
+    VERSION="$APP_VERSION"
+else
+    VER_MAJOR=$(grep -E '^VER_MAJOR=' "$ROOT/version.mk" | cut -d= -f2)
+    VER_MINOR=$(grep -E '^VER_MINOR=' "$ROOT/version.mk" | cut -d= -f2)
+    VER_RELEASE=$(grep -E '^VER_RELEASE=' "$ROOT/version.mk" | cut -d= -f2)
+    VERSION="${VER_MAJOR}.${VER_MINOR}.${VER_RELEASE}"
+fi
 
 echo "== assembling $APP (version $VERSION) =="
 rm -rf "$APP"

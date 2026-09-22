@@ -1,5 +1,6 @@
 #include "pre_inc.h"
 #include "kfx/platform/PlatformMacOS.h"
+#include <CoreFoundation/CoreFoundation.h>
 #include <mach-o/dyld.h>
 #include <limits.h>
 #include <unistd.h>
@@ -32,6 +33,12 @@ const char* PlatformMacOS::GetUserPrefDir()
     if (pref_path[0] == '\0' && !GetUserDataBaseDir(pref_path, sizeof(pref_path)))
         return PlatformLinux::GetUserPrefDir();
     return pref_path;
+}
+
+void PlatformMacOS::ServiceMainThreadQueue()
+{
+    // One non-blocking pass of the main run loop runs pending main-queue blocks.
+    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, true);
 }
 
 // When running from inside <name>.app/Contents/MacOS/, chdir to the folder holding

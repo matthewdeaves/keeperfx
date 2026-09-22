@@ -19,6 +19,11 @@ public:
      *  so renderer_prefs.ini sits with the rest of the user's data. */
     const char* GetUserPrefDir() override;
 
+    /** SDL's Cocoa GL backend dispatch_syncs [NSOpenGLContext update] onto the
+     *  main queue when the render thread swaps after a window change; drain
+     *  it here so a main thread waiting on the render thread can't deadlock. */
+    void ServiceMainThreadQueue() override;
+
 protected:
     /** ~/Library/Application Support/KeeperFX. Screenshots live here too rather
      *  than ~/Pictures, so taking one never trips a privacy prompt mid-game

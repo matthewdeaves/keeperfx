@@ -67,6 +67,12 @@ public:
     /** The window system backing this platform (SDL desktop backend). */
     virtual IWindowSystem* GetWindowSystem();
 
+    /** Run work other threads have queued for the main thread, without
+     *  processing input. Called while the main thread waits on the render
+     *  thread (macOS: SDL's GL context update runs on the main queue).
+     *  Desktop default: nothing to do. */
+    virtual void ServiceMainThreadQueue() {}
+
     /** Adjust a desktop-fullscreen window so the OS compositor keeps compositing
      *  it, rather than letting the driver present it straight to the display. */
     virtual void KeepFullscreenWindowComposited(SDL_Window* /*window*/) {}

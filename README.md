@@ -57,7 +57,8 @@ place I keep updated as the fork evolves.
   and as sneaky now show it (a one-byte flag was read as two bytes).
 - **Optional OpenGL renderer on macOS** (`RENDERER=OPENGL` in `keeperfx.cfg`) —
   fixes a render-thread deadlock and a black window, so upstream's OpenGL
-  renderer works on Apple Silicon. The default software renderer is unchanged.
+  renderer works on Apple Silicon. Without a `RENDERER` line the game uses the
+  software renderer.
 
 ### User-data locations
 - Saves, settings, high scores, netplay config and screenshots now write to the
@@ -72,8 +73,9 @@ place I keep updated as the fork evolves.
   [`docs/adr/0001-macos-userdata-locations.md`](docs/adr/0001-macos-userdata-locations.md).
 
 ### Packaging & CI
-- Optional starter `keeperfx.cfg` shipped with the macOS download, with a calmer
-  GUI flash rate (5 vs upstream's 1). Only used if the game folder has none.
+- Optional starter `keeperfx.cfg` shipped with the macOS download: upstream's
+  defaults (which select `RENDERER=OPENGL`) with a calmer GUI flash rate (5 vs
+  upstream's 1). Only used if the game folder has none.
 - CI builds and checks the macOS, Windows and Linux builds on every push to
   master.
 

@@ -2,9 +2,26 @@
 #include "kfx/renderer/RenderThreadManager.h"
 #include "kfx/renderer/RendererThread.h"
 #include "kfx/profiling/KfxProfiling.h"
+#include "kfx/platform/IPlatform.h"
+#include <chrono>
 #include "post_inc.h"
 
 thread_local bool g_on_render_thread = false;
+
+// Blocks the main thread until pred() holds, but keeps servicing work the
+// platform queues for the main thread meanwhile, so a render thread waiting
+// on the main thread can finish.
+template <typename Pred>
+static void wait_servicing_main_thread(std::unique_lock<std::mutex>& lock,
+                                       std::condition_variable& cv, Pred pred)
+{
+    while (!cv.wait_for(lock, std::chrono::milliseconds(2), pred))
+    {
+        lock.unlock();
+        GetPlatform()->ServiceMainThreadQueue();
+        lock.lock();
+    }
+}
 
 RenderThreadManager::~RenderThreadManager()
 {
@@ -20,6 +37,7 @@ void RenderThreadManager::Start(Fn init_fn, Fn work_fn, Fn present_fn, Fn cleanu
     m_active      = true;
     m_initialized = false;
     m_quit        = false;
+    m_finished    = false;
     m_work_ready  = false;
     m_work_done   = true;
 
@@ -28,14 +46,14 @@ void RenderThreadManager::Start(Fn init_fn, Fn work_fn, Fn present_fn, Fn cleanu
         std::move(init_fn), std::move(work_fn), std::move(present_fn), std::move(cleanup_fn));
 
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_cv.wait(lock, [this]{ return m_initialized; });
+    wait_servicing_main_thread(lock, m_cv, [this]{ return m_initialized; });
 }
 
 void RenderThreadManager::WaitForCompletion()
 {
     KFX_ZONE_COLOR("RenderThreadManager::WaitForCompletion", KFX_COLOR_SIMULATION);
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_cv.wait(lock, [this]{ return m_work_done; });
+    wait_servicing_main_thread(lock, m_cv, [this]{ return m_work_done; });
 }
 
 bool RenderThreadManager::IsWorkDone() const
@@ -61,6 +79,10 @@ void RenderThreadManager::Stop()
         m_quit = true;
     }
     m_cv.notify_one();
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        wait_servicing_main_thread(lock, m_cv, [this]{ return m_finished; });
+    }
     m_thread.join();
     m_active = false;
 }
@@ -100,4 +122,10 @@ void RenderThreadManager::ThreadProc(Fn init_fn, Fn work_fn, Fn present_fn, Fn c
     }
 
     cleanup_fn();
+
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        m_finished = true;
+    }
+    m_cv.notify_all();
 }

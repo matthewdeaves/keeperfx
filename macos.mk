@@ -404,7 +404,8 @@ KFX_LDFLAGS += \
 	$(shell $(PKG_CONFIG) --libs libcurl) \
 	-lminiupnpc \
 	-lnatpmp \
-	-liconv
+	-liconv \
+	-framework CoreFoundation
 
 # Vendored GL loader for the OpenGL renderer; resolved at runtime through
 # SDL_GL_GetProcAddress, so nothing links against OpenGL.framework.

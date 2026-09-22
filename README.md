@@ -53,10 +53,11 @@ place I keep updated as the fork evolves.
 - **Safety fixes** — bounds-check the RNC decompressor and the script
   command-name lookup; guard the power-hand path against a bad dungeon pointer or
   out-of-range creature model.
-- **OpenGL renderer on macOS** (`RENDERER=OPENGL` in `keeperfx.cfg`) — fixes a
-  render-thread deadlock with SDL's Cocoa context updates, and a black window
-  caused by swapping with the offscreen framebuffer still bound. The default
-  software renderer is unchanged.
+- **Thought bubbles** — creature states flagged both to show a thought bubble
+  and as sneaky now show it (a one-byte flag was read as two bytes).
+- **Optional OpenGL renderer on macOS** (`RENDERER=OPENGL` in `keeperfx.cfg`) —
+  fixes a render-thread deadlock and a black window, so upstream's OpenGL
+  renderer works on Apple Silicon. The default software renderer is unchanged.
 
 ### User-data locations
 - Saves, settings, high scores, netplay config and screenshots now write to the

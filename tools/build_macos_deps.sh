@@ -7,7 +7,7 @@
 #   deps/centijson/{include/*.h, libjson.a}
 #   deps/enet6/{include/enet6/*.h, libenet6.a}
 #
-# The Homebrew-provided deps (SDL2, ffmpeg, luajit, openal-soft, libspng,
+# The Homebrew-provided deps (SDL3, ffmpeg, luajit, openal-soft, libspng,
 # minizip, miniupnpc, libnatpmp, zlib, curl) are resolved via pkg-config.
 set -e
 

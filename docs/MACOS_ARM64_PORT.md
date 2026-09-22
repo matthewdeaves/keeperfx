@@ -20,7 +20,8 @@ standalone. Concretely:
   Catalina.)
 - **SDL3 is the platform layer** for video, input and audio (upstream migrated
   off SDL2 in #5085; networking now uses native BSD sockets rather than SDL_net).
-  The renderer is software/surface based — no OpenGL or DirectX in the hot path.
+  The default renderer is software (SDL_Renderer). Upstream's optional OpenGL
+  renderer (`RENDERER=OPENGL`) also builds and runs on macOS; see the README.
 - The platform-specific spots are already guarded: `src/bflib_cpu.c` (`cpuid`
   asm behind `__i386__ || __x86_64__`), `src/bflib_crash.c` (POSIX path with a
   non-Linux fallback), `src/kfx/platform/PlatformLinux.cpp` (pure POSIX, reused

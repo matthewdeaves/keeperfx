@@ -84,7 +84,12 @@ unsigned short display_id = 0;
 TbBool vsync_enabled = 1;
 
 /** Requested renderer backen; set from keeperfx.cfg (RENDERER) */
+#ifdef __APPLE__
+// Apple Silicon fork: OpenGL unless keeperfx.cfg says otherwise.
+int requested_renderer_type = RENDERER_OPENGL;
+#else
 int requested_renderer_type = RENDERER_SOFTWARE;
+#endif
 
 static unsigned char fade_started;
 static unsigned char from_pal[PALETTE_SIZE];

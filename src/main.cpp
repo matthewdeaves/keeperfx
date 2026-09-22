@@ -2163,7 +2163,18 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
         return 0;
     }
 
-    retval &= (RendererInit((RendererType)requested_renderer_type) != 0);
+    int renderer_ok = RendererInit((RendererType)requested_renderer_type);
+#ifdef __APPLE__
+    // OpenGL is the default on macOS, so a GL failure falls back to the
+    // software renderer rather than refusing to start.
+    if (!renderer_ok && requested_renderer_type == RENDERER_OPENGL)
+    {
+        WARNLOG("OpenGL renderer failed to initialise; falling back to software");
+        requested_renderer_type = RENDERER_SOFTWARE;
+        renderer_ok = RendererInit(RENDERER_SOFTWARE);
+    }
+#endif
+    retval &= (renderer_ok != 0);
     RendererSettings_Load();
     PlatformManager_SetWindowTitle(PROGRAM_NAME);
     LbSetIcon(1);

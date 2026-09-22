@@ -67,21 +67,12 @@ src/net_exchange_gameplay.c \
 src/net_main.c \
 src/net_lobby.c \
 src/bflib_planar.c \
-src/kfx/renderer/software/bflib_render.c \
-src/kfx/renderer/software/SwDrawTarget.c \
-src/kfx/renderer/software/bflib_render_gpoly.c \
-src/kfx/renderer/software/bflib_render_trig.c \
 src/bflib_sndlib.cpp \
 src/bflib_sound.c \
 src/bflib_sprfnt.c \
 src/bflib_string.c \
 src/bflib_text.c \
 src/bflib_video.c \
-src/kfx/renderer/software/bflib_vidraw.c \
-src/kfx/renderer/software/bflib_vidraw_spr_norm.c \
-src/kfx/renderer/software/bflib_vidraw_spr_onec.c \
-src/kfx/renderer/software/bflib_vidraw_spr_remp.c \
-src/bflib_vidsurface.c \
 src/button_snapping.c \
 src/config.c \
 src/config_campaigns.c \
@@ -192,10 +183,7 @@ src/gui_tooltips.c \
 src/gui_topmsg.c \
 src/gui_vscroll.c \
 src/highscores.c \
-src/kjm_input.c \
-src/lens_api.c \
-src/config_effects.c \
-src/kfx_memory.c \
+src/kfx/ai/TargetSearchProbe.c \
 src/kfx/lense/DisplacementEffect.cpp \
 src/kfx/lense/FlyeyeEffect.cpp \
 src/kfx/lense/LensEffect.cpp \
@@ -204,14 +192,54 @@ src/kfx/lense/LuaLensEffect.cpp \
 src/kfx/lense/MistEffect.cpp \
 src/kfx/lense/OverlayEffect.cpp \
 src/kfx/lense/PaletteEffect.cpp \
+src/kfx/platform/GLContextSDL.cpp \
 src/kfx/platform/PlatformLinux.cpp \
 src/kfx/platform/PlatformMacOS.cpp \
 src/kfx/platform/PlatformManager.cpp \
 src/kfx/platform/WindowSystemSDL.cpp \
 src/kfx/renderer/ITextRenderer.cpp \
 src/kfx/renderer/IUIRenderer.cpp \
+src/kfx/renderer/PaletteTransform.cpp \
+src/kfx/renderer/RenderGraph.cpp \
+src/kfx/renderer/RenderTaskProducerRegistry.cpp \
+src/kfx/renderer/RenderThreadManager.cpp \
+src/kfx/renderer/RendererBridge_UI.cpp \
+src/kfx/renderer/RendererFrameCounter.cpp \
 src/kfx/renderer/RendererManager.cpp \
+src/kfx/renderer/RendererOpenGL.cpp \
+src/kfx/renderer/RendererSettings.c \
 src/kfx/renderer/RendererSoftware.cpp \
+src/kfx/renderer/RendererThread.cpp \
+src/kfx/renderer/TileAtlasPacker.cpp \
+src/kfx/renderer/backends/SoftwareCursorLayer.cpp \
+src/kfx/renderer/backends/SoftwareWorldViewRenderer.cpp \
+src/kfx/renderer/opengl/GLCursorLayer.cpp \
+src/kfx/renderer/opengl/GLFunctions.cpp \
+src/kfx/renderer/opengl/GLImagePresentPass.cpp \
+src/kfx/renderer/opengl/GLMapFadePass.cpp \
+src/kfx/renderer/opengl/GLPaletteIndexLookup.cpp \
+src/kfx/renderer/opengl/GLResourceMapper.cpp \
+src/kfx/renderer/opengl/GLSpriteAtlas.cpp \
+src/kfx/renderer/opengl/GLTextRenderer.cpp \
+src/kfx/renderer/opengl/GLTileAtlas.cpp \
+src/kfx/renderer/opengl/GLUIRenderer.cpp \
+src/kfx/renderer/opengl/GLWorldViewRenderer.cpp \
+src/kfx/renderer/opengl/GLZoomBoxTilesPass.cpp \
+src/kfx/renderer/software/SwDisplaySurface.c \
+src/kfx/renderer/software/SwDrawTarget.c \
+src/kfx/renderer/software/SwZoomBoxTiles.c \
+src/kfx/renderer/software/bflib_render.c \
+src/kfx/renderer/software/bflib_render_gpoly.c \
+src/kfx/renderer/software/bflib_render_trig.c \
+src/kfx/renderer/software/bflib_vidraw.c \
+src/kfx/renderer/software/bflib_vidraw_spr_norm.c \
+src/kfx/renderer/software/bflib_vidraw_spr_onec.c \
+src/kfx/renderer/software/bflib_vidraw_spr_remp.c \
+src/kfx/ui/GameUI.cpp \
+src/kjm_input.c \
+src/lens_api.c \
+src/config_effects.c \
+src/kfx_memory.c \
 src/light_data.c \
 src/lua_api.c \
 src/lua_api_lens.c \
@@ -323,6 +351,7 @@ KFX_INCLUDES = \
 	-Ideps/centitoml \
 	-Ideps/astronomy/include \
 	-Ideps/enet6/include \
+	-Ideps/glad/include \
 	-I$(BREW)/include \
 	$(shell $(PKG_CONFIG) --cflags-only-I luajit) \
 	$(shell $(PKG_CONFIG) --cflags-only-I libavformat) \
@@ -377,6 +406,15 @@ KFX_LDFLAGS += \
 	-lnatpmp \
 	-liconv
 
+# Vendored GL loader for the OpenGL renderer; resolved at runtime through
+# SDL_GL_GetProcAddress, so nothing links against OpenGL.framework.
+GLAD_OBJECTS = obj/glad/glad.o
+
+# Window icon bytes for WindowSystemSDL, generated like upstream's CMake does on
+# every non-Windows target.
+ICON_PNG = res/keeperfx_icon256-24bpp.png
+ICON_OBJECTS = obj/generated/window_icon.o
+
 TOML_SOURCES = \
 	deps/centitoml/toml_api.c
 
@@ -394,8 +432,8 @@ clean:
 
 .PHONY: all clean
 
-bin/keeperfx: $(KFX_OBJECTS) $(TOML_OBJECTS) | bin
-	$(CXX) -o $@ $(KFX_OBJECTS) $(TOML_OBJECTS) $(KFX_LDFLAGS)
+bin/keeperfx: $(KFX_OBJECTS) $(TOML_OBJECTS) $(GLAD_OBJECTS) $(ICON_OBJECTS) | bin
+	$(CXX) -o $@ $(KFX_OBJECTS) $(TOML_OBJECTS) $(GLAD_OBJECTS) $(ICON_OBJECTS) $(KFX_LDFLAGS)
 	$(STRIP) -x $@
 
 $(KFX_C_OBJECTS): obj/%.o: src/%.c src/ver_defs.h | obj
@@ -408,6 +446,19 @@ $(KFX_CXX_OBJECTS): obj/%.o: src/%.cpp src/ver_defs.h | obj
 
 $(TOML_OBJECTS): obj/centitoml/%.o: deps/centitoml/%.c | obj/centitoml
 	$(CC) $(TOML_CFLAGS) -c $< -o $@
+
+$(GLAD_OBJECTS): obj/glad/%.o: deps/glad/src/%.c
+	$(MKDIR) $(dir $@)
+	$(CC) -O2 $(ARCHFLAGS) -Ideps/glad/include -c $< -o $@
+
+obj/generated/window_icon.c: $(ICON_PNG)
+	$(MKDIR) $(dir $@)
+	{ printf 'const unsigned char kfx_window_icon_png[] = {\n'; \
+	  od -An -v -tx1 $< | sed -e 's/ *\([0-9a-f][0-9a-f]\)/0x\1,/g'; \
+	  printf '};\nconst unsigned int kfx_window_icon_png_size = sizeof(kfx_window_icon_png);\n'; } > $@
+
+$(ICON_OBJECTS): obj/generated/window_icon.c
+	$(CC) -O2 $(ARCHFLAGS) -c $< -o $@
 
 # Pull in the auto-generated header-dependency sidecars (.d) from -MMD. Absent on
 # the first build (the pattern rules still fire); present on every rebuild after.

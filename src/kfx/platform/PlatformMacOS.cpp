@@ -10,6 +10,7 @@
 
 // Bundled config-defaults dir (see config_keeperfx.c); set from the .app's Contents/Resources.
 extern "C" char keeper_defaults_directory[640];
+extern "C" char keeper_userdata_directory[640];
 
 const char* PlatformMacOS::GetOSVersion() const { return "macOS"; }
 
@@ -20,6 +21,17 @@ bool PlatformMacOS::GetUserDataBaseDir(char* out, size_t out_size) const
         return false;
     snprintf(out, out_size, "%s/Library/Application Support/KeeperFX", home);
     return true;
+}
+
+const char* PlatformMacOS::GetUserPrefDir()
+{
+    static char pref_path[640] = {};
+    if (keeper_userdata_directory[0] != '\0')
+        return keeper_userdata_directory;
+    // Asked before SetupUserDataDirectories() ran: compute the same folder.
+    if (pref_path[0] == '\0' && !GetUserDataBaseDir(pref_path, sizeof(pref_path)))
+        return PlatformLinux::GetUserPrefDir();
+    return pref_path;
 }
 
 // When running from inside <name>.app/Contents/MacOS/, chdir to the folder holding

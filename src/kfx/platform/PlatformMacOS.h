@@ -15,6 +15,10 @@ public:
      *  file. Also records Contents/Resources as the bundled-defaults dir. */
     void EarlyStartup() override;
 
+    /** Same folder as saves (ADR 0001), not SDL's keeperfx/keeperfx pref path,
+     *  so renderer_prefs.ini sits with the rest of the user's data. */
+    const char* GetUserPrefDir() override;
+
 protected:
     /** ~/Library/Application Support/KeeperFX. Screenshots live here too rather
      *  than ~/Pictures, so taking one never trips a privacy prompt mid-game

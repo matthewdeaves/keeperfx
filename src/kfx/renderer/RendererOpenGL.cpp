@@ -505,7 +505,16 @@ void RendererOpenGL::render_thread_work()
     {
         // blocks on vsync
         KFX_ZONE_COLOR("RendererOpenGL::SwapBuffers", KFX_COLOR_RENDER_GPU);
+#ifdef __APPLE__
+        // Cocoa's GL swap needs the window framebuffer bound. Swapping with
+        // the offscreen target bound leaves the window black even though the
+        // blit to its back buffer succeeded.
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+#endif
         m_gl_context->SwapBuffers();
+#ifdef __APPLE__
+        m_impl->BindScreenTarget(fd);
+#endif
     }
     KFX_GPU_COLLECT();
     KFX_FRAMEMARK();

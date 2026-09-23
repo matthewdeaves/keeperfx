@@ -1,23 +1,15 @@
 # Native macOS (Apple Silicon / arm64) build
 
-KeeperFX builds and runs **natively on Apple Silicon** — a Mach-O arm64 binary,
-no Rosetta, no emulation. It has been verified end to end: it compiles, launches,
-loads the original Dungeon Keeper data, and runs into live gameplay.
+A native arm64 Mach-O build of KeeperFX. `macos.mk` is the Linux build adapted
+for arm64 and Homebrew (upstream's CMake rejects Apple, so macOS keeps its own
+makefile).
 
-The macOS build follows the native **Linux** build, which already does almost all
-of the cross-platform work; `macos.mk` is that build adapted for arm64 + Homebrew.
-(Upstream has since moved Windows and Linux to CMake, but its CMake rejects Apple,
-so macOS stays on its own makefile.)
+## Portability basis
 
-## Why this is tractable
+The engine is fully decompiled and standalone (no hooks into the 32-bit `DK.exe`):
 
-The hard part of porting KeeperFX (the historic hooking into the original 32-bit
-`DK.exe` at fixed addresses) is **gone** — the engine is fully decompiled and
-standalone. Concretely:
-
-- **64-bit clean.** The Linux build compiles with `-march=x86-64`; there is no
-  32-bit lock-in. (Critical, since macOS has had zero 32-bit support since
-  Catalina.)
+- **64-bit clean.** The Linux build compiles with `-march=x86-64`; nothing needs
+  32-bit (macOS has no 32-bit support since Catalina).
 - **SDL3 is the platform layer** for video, input and audio (upstream migrated
   off SDL2 in #5085; networking now uses native BSD sockets rather than SDL_net).
   On macOS this fork defaults to upstream's OpenGL renderer and falls back to the

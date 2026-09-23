@@ -1,30 +1,16 @@
 # KeeperFX — Apple Silicon fork
 
-> **Personal, unofficial fork. Use at your own risk.**
->
-> Dungeon Keeper was a favourite game of my childhood, and I wanted a version of
-> [KeeperFX](https://github.com/dkfans/keeperfx) — the open-source Dungeon Keeper
-> remake — that runs **natively on Apple Silicon (arm64)**. Nearly all of the game
-> is upstream's work; this fork only adds what the native macOS build needs.
->
-> It is **not affiliated with or endorsed by** the upstream KeeperFX team, comes
-> with no guarantees or support, and the app is ad-hoc signed (not notarized).
->
-> **This fork is temporary:** once upstream ships an official macOS / Apple
-> Silicon build, I'll stop maintaining it. Until then it follows upstream.
->
-> **If you just want to play KeeperFX, use the official project:**
-> **https://github.com/dkfans/keeperfx**
+Unofficial fork of [KeeperFX](https://github.com/dkfans/keeperfx), the
+open-source Dungeon Keeper remake, with a native Apple Silicon (arm64) macOS
+build. Not affiliated with or endorsed by the KeeperFX team; no support; the app
+is ad-hoc signed, not notarized. The fork ends when upstream ships an official
+macOS build. For the game itself, and on Windows/Linux, use
+**https://github.com/dkfans/keeperfx**.
 
 ## Download (Apple Silicon)
 
-A prebuilt, self-contained **`KeeperFX.app`** (currently `macos-v1.4.8`) is
-published here — no build needed:
-
+Self-contained **`KeeperFX.app`** (currently `macos-v1.4.8`, tags `macos-v*`):
 **https://github.com/matthewdeaves/keeperfx/releases/latest**
-
-(Versioned releases are tagged `macos-v*`; that link always resolves to the
-newest one.)
 
 Drop it next to your existing KeeperFX data (and the original Dungeon Keeper
 files) and double-click. First-launch Gatekeeper and folder-layout notes are
@@ -32,13 +18,10 @@ under [macOS: running](#macos-running); or [build it yourself](#macos-build-from
 
 ## Changes in this fork
 
-Everything below is what this fork adds on top of upstream `dkfans/keeperfx`; the
-game itself, and Windows/Linux support, are upstream's work. This is the one
-place I keep updated as the fork evolves.
+What this fork adds on top of upstream `dkfans/keeperfx`:
 
 ### Apple Silicon / arm64
-- **Native arm64 build** (`macos.mk`) — a real Mach-O binary, no Rosetta or
-  emulation — plus a self-contained, self-locating `KeeperFX.app` that bundles
+- **Native arm64 build** (`macos.mk`), plus a self-contained, self-locating `KeeperFX.app` that bundles
   its dylibs and its own config defaults (so it still works dropped next to an
   older KeeperFX data install).
 - **arm64 correctness fixes** — unaligned-access (SIGBUS) crashes in the
@@ -63,8 +46,8 @@ place I keep updated as the fork evolves.
   - **macOS:** `~/Library/Application Support/KeeperFX`
   - **Linux:** `$XDG_DATA_HOME/keeperfx` (default `~/.local/share/keeperfx`)
   - **Windows:** `%APPDATA%\KeeperFX`
-- On macOS, screenshots go to Application Support, **not** `~/Pictures`, so taking
-  one never triggers a privacy permission prompt mid-game. Full rationale in
+- On macOS, screenshots go to Application Support, not `~/Pictures`, so there is
+  no privacy prompt. See
   [`docs/adr/0001-macos-userdata-locations.md`](docs/adr/0001-macos-userdata-locations.md).
 
 ### Packaging & CI
@@ -129,11 +112,9 @@ Double-click `KeeperFX.app`. On first launch:
 - If the folder is privacy-protected (Desktop, Documents, Downloads), macOS asks
   to let KeeperFX access files there — click **Allow**.
 
-> Tip: if you have GOG's *Dungeon Keeper Gold* installed, the required original
-> files ship **uncompressed** inside its app bundle at
-> `Contents/Resources/game/{DATA,SOUND}/` (and the `keeper0*.ogg` soundtrack in
-> its game root) — no CD-image extraction needed. Copy them in with lowercase
-> names.
+GOG's *Dungeon Keeper Gold* app has the original files uncompressed at
+`Contents/Resources/game/{DATA,SOUND}/` (soundtrack `keeper0*.ogg` in its game
+root); copy them in with lowercase names.
 
 ## Windows / Linux
 

@@ -86,7 +86,8 @@ fonts; it falls back to the `.fon` bitmap fonts) and `colours.col` / `tables.dat
 ## Packaging a self-contained `KeeperFX.app`
 
 `tools/make_macos_app.sh` turns `bin/keeperfx` into a redistributable
-`dist/KeeperFX.app` that runs on any Apple Silicon Mac with **no Homebrew**:
+`dist/KeeperFX.app` that runs with **no Homebrew**. Its `LSMinimumSystemVersion` is
+the highest `minos` of the engine and bundled dylibs (macOS 15 from CI):
 
 ```sh
 make -f macos.mk && tools/make_macos_app.sh

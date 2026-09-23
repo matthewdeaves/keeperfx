@@ -2,8 +2,8 @@
 # Assemble a self-contained, ad-hoc-signed KeeperFX.app for Apple Silicon.
 #
 # macos.mk links against Homebrew dylibs by absolute path; this script bundles
-# those dylibs and rewrites the load paths (dylibbundler) so the .app runs on any
-# arm64 Mac with no Homebrew. The engine is the bundle's main executable and
+# those dylibs and rewrites the load paths (dylibbundler) so the .app runs
+# without Homebrew. The engine is the bundle's main executable and
 # chdir's to the folder containing the .app on startup (PlatformMacOS::EarlyStartup
 # in src/kfx/platform/), so users drop KeeperFX.app next to their game data and run it.
 #
@@ -149,6 +149,13 @@ done
 test -f "$APP/Contents/Resources/fxdata/sounds.cfg" \
     || { echo "error: config/fxdata/sounds.cfg was not bundled into the app" >&2; exit 1; }
 
+# Declare the macOS the bundle really needs: the highest minimum OS of the
+# engine and its bundled dylibs (Homebrew bottles follow the build machine).
+MIN_MACOS=$(for f in "$APP/Contents/MacOS/keeperfx" "$APP"/Contents/libs/*.dylib; do
+    otool -l "$f" | awk '$1 == "minos" {print $2}'
+done | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+[ -n "$MIN_MACOS" ] || { echo "error: could not read the bundle's minimum macOS" >&2; exit 1; }
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -162,7 +169,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleExecutable</key><string>keeperfx</string>
     ${ICON_KEY}
-    <key>LSMinimumSystemVersion</key><string>11.0</string>
+    <key>LSMinimumSystemVersion</key><string>${MIN_MACOS}</string>
     <key>LSArchitecturePriority</key><array><string>arm64</string></array>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSDesktopFolderUsageDescription</key><string>KeeperFX needs to read its game data files (data, sound, campaigns) from the folder it was placed in.</string>

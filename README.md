@@ -4,27 +4,22 @@
 >
 > Dungeon Keeper was a favourite game of my childhood, and I wanted a version of
 > [KeeperFX](https://github.com/dkfans/keeperfx) — the open-source Dungeon Keeper
-> remake — that builds and runs **natively on Apple Silicon (arm64)**. I'm not a
-> KeeperFX expert; I've just made judgment calls along the way and tried to keep
-> the changes clean rather than hacky.
+> remake — that runs **natively on Apple Silicon (arm64)**. Nearly all of the game
+> is upstream's work; this fork only adds what the native macOS build needs.
 >
-> This fork is **not affiliated with or endorsed by** the upstream KeeperFX team.
-> It comes with no guarantees or support: it may break, and the macOS app is
-> ad-hoc signed (not notarized). Nearly all of the game is upstream's work — I've
-> only touched what was needed to get it building and running natively on Apple
-> Silicon.
+> It is **not affiliated with or endorsed by** the upstream KeeperFX team, comes
+> with no guarantees or support, and the app is ad-hoc signed (not notarized).
 >
-> **This fork is temporary.** Native macOS support is being worked on upstream;
-> once the official project ships a macOS / Apple Silicon build, this fork will
-> have done its job and I'll stop maintaining it. Until then I keep it building
-> and roughly in step with upstream.
+> **This fork is temporary:** once upstream ships an official macOS / Apple
+> Silicon build, I'll stop maintaining it. Until then it follows upstream.
 >
 > **If you just want to play KeeperFX, use the official project:**
 > **https://github.com/dkfans/keeperfx**
 
 ## Download (Apple Silicon)
 
-A prebuilt, self-contained **`KeeperFX.app`** is published here — no build needed:
+A prebuilt, self-contained **`KeeperFX.app`** (currently `macos-v1.4.8`) is
+published here — no build needed:
 
 **https://github.com/matthewdeaves/keeperfx/releases/latest**
 
@@ -87,10 +82,9 @@ editions on [GOG](https://www.gog.com/game/dungeon_keeper) /
 [EA](https://www.ea.com/games/dungeon-keeper/dungeon-keeper) /
 [Steam](https://store.steampowered.com/app/1996630/Dungeon_Keeper_Gold/)) listed
 in [`docs/files_required_from_original_dk.txt`](docs/files_required_from_original_dk.txt).
-The install gate is simply the presence of `data/bluepal.dat`.
 
-I built and tested this fork against **Dungeon Keeper Gold** from
-[GOG](https://www.gog.com/game/dungeon_keeper).
+The app needs an **Apple Silicon Mac on macOS 15 or later**. Tested on a MacBook
+Air (M5, macOS 26) with **Dungeon Keeper Gold** from GOG.
 
 ## macOS: build from source
 
@@ -110,7 +104,7 @@ tools/make_macos_app.sh          # -> dist/KeeperFX.app
 ```
 
 This bundles the engine's libraries (via `dylibbundler`) and ad-hoc signs it, so
-the `.app` runs on any Apple Silicon Mac with **no Homebrew installed**.
+the `.app` runs with **no Homebrew installed**.
 
 ## macOS: running
 
@@ -143,12 +137,9 @@ Double-click `KeeperFX.app`. On first launch:
 
 ## Windows / Linux
 
-**Use the official project, not this fork.** This fork exists for the macOS /
-Apple Silicon build. On Windows and Linux, upstream KeeperFX is the real thing —
-get it from **https://github.com/dkfans/keeperfx**. I do my best to keep the
-Windows and Linux builds working here (CI checks them on every push, and they
-build with CMake, as upstream does), but there's no reason to use this fork
-over upstream on those platforms.
+**Use the official project: https://github.com/dkfans/keeperfx.** CI still
+builds Windows and Linux here (with CMake, as upstream does), but there's no
+reason to use this fork on those platforms.
 
 ## License
 

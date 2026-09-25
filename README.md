@@ -9,7 +9,7 @@ macOS build. For the game itself, and on Windows/Linux, use
 
 ## Download (Apple Silicon)
 
-Self-contained **`KeeperFX.app`** (currently `macos-v1.4.9`, tags `macos-v*`):
+Self-contained **`KeeperFX.app`** (currently `macos-v1.4.10`, tags `macos-v*`):
 **https://github.com/matthewdeaves/keeperfx/releases/latest**
 
 Drop it next to your existing KeeperFX data (and the original Dungeon Keeper
@@ -37,12 +37,13 @@ What this fork adds on top of upstream `dkfans/keeperfx`:
   black window, so upstream's OpenGL renderer works on Apple Silicon, and makes it
   the default. `RENDERER=SOFTWARE` in `keeperfx.cfg` selects the software
   renderer. If OpenGL fails to start, the game falls back to software.
-- **Text rendering: fixed a redundant-redraw bug** in word-wrapped text with no
-  alignment set (notably the scrolling tooltip box), where every word-wrap
-  point re-emitted the whole string from the start — an upstream bug, also
-  fixed here. Also skip glyphs fully outside the current clip rect instead of
-  laying them out. Measured on an Apple Silicon Mac: a scrolling tooltip that
-  dropped rendering to 4 FPS now holds 30+.
+- **Text rendering, three fixes for the same underlying cost** (an upstream bug,
+  also fixed here): word-wrapped text with no alignment set (notably the
+  scrolling tooltip box) re-emitted the whole string from the start at every
+  word-wrap point; glyphs fully outside the current clip rect were still laid
+  out; and every glyph was its own GPU draw call. Text now batches into one
+  draw call per run. Measured on an Apple Silicon Mac: a scrolling tooltip that
+  dropped rendering to 4 FPS now holds a steady 58-60.
 
 ### User-data locations
 - Saves, settings, high scores, netplay config and screenshots now write to the

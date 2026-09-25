@@ -44,12 +44,16 @@ private:
                       const struct TbSpriteSheet* font, const struct AsianFont* dbc_font,
                       const IRTextDrawCmd& cmd, DrawState& state);
 
-    // Returns the glyph's advance width in pixels (already scaled).
+    // Returns the glyph's advance width in pixels (already scaled). Glyphs
+    // wholly outside cmd.clip_* are skipped (not appended) since they'd be
+    // scissored away in DrawGlyphs anyway -- output is identical, just fewer
+    // glyphs recorded per frame for text scrolled or clipped out of view.
     float EmitWesternGlyph(const struct TbSpriteSheet* font, uint32_t chr,
-                           float x, float y, int units_per_px, const DrawState& state);
+                           float x, float y, int units_per_px, const DrawState& state,
+                           const IRTextDrawCmd& cmd);
     float EmitDbcGlyph(const struct AsianFont* dbc_font, uint32_t chr,
                        float x, float y, int units_per_px, const DrawState& state,
-                       long face_colour, long shadow_colour);
+                       long face_colour, long shadow_colour, const IRTextDrawCmd& cmd);
 
     void EmitUnderline(float x, float y, float w, float h, int units_per_px, const DrawState& state);
 };

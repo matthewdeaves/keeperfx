@@ -273,8 +273,8 @@ void GLTextRenderer::FlushSegment(const char* sbuf, const char* ebuf, float x, f
         }
         else if (chr > 32)
         {
-            float w = dbc_font ? EmitDbcGlyph(dbc_font, chr, x, y, units_per_px, state, cmd.dbc_colour0, cmd.dbc_colour1)
-                                : EmitWesternGlyph(font, chr, x, y, units_per_px, state);
+            float w = dbc_font ? EmitDbcGlyph(dbc_font, chr, x, y, units_per_px, state, cmd.dbc_colour0, cmd.dbc_colour1, cmd)
+                                : EmitWesternGlyph(font, chr, x, y, units_per_px, state, cmd);
             x += w;
         }
         else if (chr == '\t')
@@ -301,24 +301,43 @@ void GLTextRenderer::FlushSegment(const char* sbuf, const char* ebuf, float x, f
     }
 }
 
+namespace {
+// DrawGlyphs() only scissors to cmd.clip_* when both dimensions are positive
+// (its own scissor_valid check); mirror that here so a glyph is only culled
+// when it would provably have been scissored away, never when clipping is
+// off for this command.
+bool GlyphOutsideClip(const IRTextDrawCmd& cmd, float x, float y, float w, float h)
+{
+    if ((cmd.clip_w <= 0) || (cmd.clip_h <= 0))
+        return false;
+    return (x + w <= (float)cmd.clip_x) || (x >= (float)(cmd.clip_x + cmd.clip_w)) ||
+           (y + h <= (float)cmd.clip_y) || (y >= (float)(cmd.clip_y + cmd.clip_h));
+}
+} // namespace
+
 float GLTextRenderer::EmitWesternGlyph(const struct TbSpriteSheet* font, uint32_t chr,
-                                       float x, float y, int units_per_px, const DrawState& state)
+                                       float x, float y, int units_per_px, const DrawState& state,
+                                       const IRTextDrawCmd& cmd)
 {
     const struct TbSprite* spr = LbFontCharSprite(font, chr);
     if (!spr || spr->SWidth == 0 || spr->SHeight == 0)
         return 0.0f;
 
-    IRTextGlyph glyph;
-    glyph.kind = (state.flags & Lb_TEXT_ONE_COLOR) ? IRTextGlyphKind::ColourSprite : IRTextGlyphKind::PaletteSprite;
-    glyph.colour = state.colour;
-    glyph.sprite = m_ui->ResolveSprite(spr);
-    glyph.x = x;
-    glyph.y = y;
-    glyph.units_per_px = units_per_px;
-    glyph.alpha = draw_flags_source_weight(state.flags);
-    m_layout_out->glyphs.Append(glyph);
-
     float w = (float)(spr->SWidth * units_per_px / 16);
+    float h = (float)(spr->SHeight * units_per_px / 16);
+    if (!GlyphOutsideClip(cmd, x, y, w, h))
+    {
+        IRTextGlyph glyph;
+        glyph.kind = (state.flags & Lb_TEXT_ONE_COLOR) ? IRTextGlyphKind::ColourSprite : IRTextGlyphKind::PaletteSprite;
+        glyph.colour = state.colour;
+        glyph.sprite = m_ui->ResolveSprite(spr);
+        glyph.x = x;
+        glyph.y = y;
+        glyph.units_per_px = units_per_px;
+        glyph.alpha = draw_flags_source_weight(state.flags);
+        m_layout_out->glyphs.Append(glyph);
+    }
+
     if (state.flags & Lb_TEXT_UNDERLINE)
         EmitUnderline(x, y, w, (float)LbSprFontCharHeight(font, ' ') * units_per_px / 16.0f, units_per_px, state);
     return w;
@@ -326,7 +345,7 @@ float GLTextRenderer::EmitWesternGlyph(const struct TbSpriteSheet* font, uint32_
 
 float GLTextRenderer::EmitDbcGlyph(const struct AsianFont* dbc_font, uint32_t chr,
                                    float x, float y, int units_per_px, const DrawState& state,
-                                   long face_colour, long shadow_colour)
+                                   long face_colour, long shadow_colour, const IRTextDrawCmd& cmd)
 {
     SpriteHandle handle = m_ui->ResolveDbcGlyph(dbc_font, chr);
     if (handle == kInvalidSpriteHandle)
@@ -344,20 +363,26 @@ float GLTextRenderer::EmitDbcGlyph(const struct AsianFont* dbc_font, uint32_t ch
     const float scale = units_per_px / 16.0f;
     const float gy = y + (float)voffset * scale;
 
-    IRTextGlyph glyph;
-    glyph.kind = IRTextGlyphKind::ColourSprite;
-    glyph.sprite = handle;
-    glyph.units_per_px = units_per_px;
-    glyph.alpha = draw_flags_source_weight(state.flags);
-    // Drop shadow, always drawn
-    glyph.colour = (uint8_t)shadow_colour;
-    glyph.x = x + 1.0f;
-    glyph.y = gy + 1.0f;
-    m_layout_out->glyphs.Append(glyph);
-    glyph.colour = (uint8_t)colour_idx;
-    glyph.x = x;
-    glyph.y = gy;
-    m_layout_out->glyphs.Append(glyph);
+    // Shadow is offset by 1px; use the unshifted box for both -- a 1px-wide
+    // miss on the cull test just means an extra glyph is recorded, which
+    // DrawGlyphs' own scissor test still clips correctly.
+    if (!GlyphOutsideClip(cmd, x, gy, (float)glyph_w * scale + 1.0f, (float)glyph_h * scale + 1.0f))
+    {
+        IRTextGlyph glyph;
+        glyph.kind = IRTextGlyphKind::ColourSprite;
+        glyph.sprite = handle;
+        glyph.units_per_px = units_per_px;
+        glyph.alpha = draw_flags_source_weight(state.flags);
+        // Drop shadow, always drawn
+        glyph.colour = (uint8_t)shadow_colour;
+        glyph.x = x + 1.0f;
+        glyph.y = gy + 1.0f;
+        m_layout_out->glyphs.Append(glyph);
+        glyph.colour = (uint8_t)colour_idx;
+        glyph.x = x;
+        glyph.y = gy;
+        m_layout_out->glyphs.Append(glyph);
+    }
 
     float advance = (glyph_h == 16) ? (float)((spacing + glyph_w) * units_per_px / 16) : (float)(spacing + glyph_w);
     if (state.flags & Lb_TEXT_UNDERLINE)

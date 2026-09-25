@@ -169,7 +169,7 @@ void GLTextRenderer::Layout(const IRTextDrawCmd& cmd, const char* text, const st
         {
             float w = char_width(' ');
             float wordw = word_width(ebuf);
-            if (posx + w + wordw - justifyx <= justify_w)
+            if ((posx + w + wordw - justifyx <= justify_w) || !LbAlignMethodSet((unsigned short)state.flags))
             {
                 count++;
                 posx += w;
@@ -205,7 +205,7 @@ void GLTextRenderer::Layout(const IRTextDrawCmd& cmd, const char* text, const st
             float w = char_width(' ');
             posx += (float)spaces_per_tab * w;
             float len = word_width(ebuf);
-            if (posx + len - justifyx <= justify_w)
+            if ((posx + len - justifyx <= justify_w) || !LbAlignMethodSet((unsigned short)state.flags))
             {
                 count += spaces_per_tab;
                 continue;

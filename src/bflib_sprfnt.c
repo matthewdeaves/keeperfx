@@ -859,7 +859,7 @@ TbBool LbTextDrawResizedImmediate(int posx, int posy, int units_per_px, const ch
         {
             w = LbTextCharWidthM(' ', units_per_px);
             len = LbTextWordWidthM(ebuf, units_per_px);
-            if (posx+w+len-justifyx <= lbTextJustifyWindow.width)
+            if ((posx+w+len-justifyx <= lbTextJustifyWindow.width) || !LbAlignMethodSet(RendererGetDrawFlags()))
             {
                 count++;
                 posx += w;
@@ -898,7 +898,7 @@ TbBool LbTextDrawResizedImmediate(int posx, int posy, int units_per_px, const ch
             w = LbTextCharWidthM(' ', units_per_px);
             posx += lbSpacesPerTab*w;
             len = LbTextWordWidthM(ebuf, units_per_px);
-            if (posx+len-justifyx <= lbTextJustifyWindow.width)
+            if ((posx+len-justifyx <= lbTextJustifyWindow.width) || !LbAlignMethodSet(RendererGetDrawFlags()))
             {
               count += lbSpacesPerTab;
               continue;

@@ -9,7 +9,7 @@ macOS build. For the game itself, and on Windows/Linux, use
 
 ## Download (Apple Silicon)
 
-Self-contained **`KeeperFX.app`** (currently `macos-v1.4.8`, tags `macos-v*`):
+Self-contained **`KeeperFX.app`** (currently `macos-v1.4.9`, tags `macos-v*`):
 **https://github.com/matthewdeaves/keeperfx/releases/latest**
 
 Drop it next to your existing KeeperFX data (and the original Dungeon Keeper
@@ -37,6 +37,12 @@ What this fork adds on top of upstream `dkfans/keeperfx`:
   black window, so upstream's OpenGL renderer works on Apple Silicon, and makes it
   the default. `RENDERER=SOFTWARE` in `keeperfx.cfg` selects the software
   renderer. If OpenGL fails to start, the game falls back to software.
+- **Text rendering: fixed a redundant-redraw bug** in word-wrapped text with no
+  alignment set (notably the scrolling tooltip box), where every word-wrap
+  point re-emitted the whole string from the start — an upstream bug, also
+  fixed here. Also skip glyphs fully outside the current clip rect instead of
+  laying them out. Measured on an Apple Silicon Mac: a scrolling tooltip that
+  dropped rendering to 4 FPS now holds 30+.
 
 ### User-data locations
 - Saves, settings, high scores, netplay config and screenshots now write to the
@@ -67,7 +73,7 @@ editions on [GOG](https://www.gog.com/game/dungeon_keeper) /
 in [`docs/files_required_from_original_dk.txt`](docs/files_required_from_original_dk.txt).
 
 The app needs an **Apple Silicon Mac on macOS 15 or later**. Tested on a MacBook
-Air (M5, macOS 26) with **Dungeon Keeper Gold** from GOG.
+Air (M5, macOS 26 and 27) with **Dungeon Keeper Gold** from GOG.
 
 ## macOS: build from source
 

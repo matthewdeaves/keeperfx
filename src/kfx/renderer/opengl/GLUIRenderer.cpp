@@ -223,6 +223,68 @@ void GLUIRenderer::DrawGlyphQuad(SpriteHandle glyph, float x, float y, int units
                         x, y, w, h, uv.u0, uv.v0, uv.u1, uv.v1, r, g, b, a);
 }
 
+void GLUIRenderer::BeginGlyphBatch()
+{
+    m_text_batch_run.clear();
+    m_text_batch_pass = PASS_SPRITE;
+}
+
+void GLUIRenderer::QueueGlyphQuad(SpriteHandle glyph, float x, float y, int units_per_px,
+                                  float r, float g, float b, float a, bool sample_palette)
+{
+    SpriteUV uv;
+    if (!m_atlas || !m_atlas->GetUV(glyph, uv))
+    {
+        static std::unordered_set<SpriteHandle> s_logged;
+        if (m_atlas && s_logged.insert(glyph).second)
+            WARNLOG("GLUIRenderer::QueueGlyphQuad: GetUV(handle=%u) failed -- glyph/cursor not in atlas", (unsigned)glyph);
+        return;
+    }
+    const float w = uv.pixel_w * units_per_px / 16.0f;
+    const float h = uv.pixel_h * units_per_px / 16.0f;
+
+    const PassType pass = sample_palette ? PASS_SPRITE : PASS_COLORED;
+    if (!m_text_batch_run.empty() && pass != m_text_batch_pass)
+    {
+        FlushQuadRun(m_text_batch_run, m_text_batch_pass, -1);
+        m_text_batch_run.clear();
+    }
+    if (m_text_batch_run.empty())
+        m_text_batch_pass = pass;
+
+    UIQuad q;
+    q.x0 = x;     q.y0 = y;
+    q.x1 = x + w; q.y1 = y + h;
+    q.u0 = uv.u0; q.v0 = uv.v0;
+    q.u1 = uv.u1; q.v1 = uv.v1;
+    q.r = r; q.g = g; q.b = b; q.a = a;
+    m_text_batch_run.push_back(q);
+}
+
+void GLUIRenderer::QueueSolidRect(float x, float y, float w, float h, float r, float g, float b, float a)
+{
+    if (!m_text_batch_run.empty() && m_text_batch_pass != PASS_SOLID)
+    {
+        FlushQuadRun(m_text_batch_run, m_text_batch_pass, -1);
+        m_text_batch_run.clear();
+    }
+    if (m_text_batch_run.empty())
+        m_text_batch_pass = PASS_SOLID;
+
+    UIQuad q;
+    q.x0 = x;     q.y0 = y;
+    q.x1 = x + w; q.y1 = y + h;
+    q.r = r; q.g = g; q.b = b; q.a = a;
+    m_text_batch_run.push_back(q);
+}
+
+void GLUIRenderer::EndGlyphBatch()
+{
+    if (!m_text_batch_run.empty())
+        FlushQuadRun(m_text_batch_run, m_text_batch_pass, -1);
+    m_text_batch_run.clear();
+}
+
 SpriteHandle GLUIRenderer::ResolveDbcGlyph(const struct AsianFont* font, uint32_t codepoint)
 {
     if (!font) return kInvalidSpriteHandle;

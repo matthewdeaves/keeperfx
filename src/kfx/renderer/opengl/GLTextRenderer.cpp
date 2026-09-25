@@ -61,6 +61,7 @@ void GLTextRenderer::DrawGlyphs(const IRTextDrawCmd& cmd, const TextCommandBuffe
     }
 
     const IRTextGlyph* glyphs = text.glyphs.Data() + cmd.glyph_first;
+    m_ui->BeginGlyphBatch();
     for (uint32_t i = 0; i < cmd.glyph_count; ++i)
     {
         const IRTextGlyph& glyph = glyphs[i];
@@ -70,16 +71,17 @@ void GLTextRenderer::DrawGlyphs(const IRTextDrawCmd& cmd, const TextCommandBuffe
         switch (glyph.kind)
         {
         case IRTextGlyphKind::PaletteSprite:
-            m_ui->DrawGlyphQuad(glyph.sprite, glyph.x, glyph.y, glyph.units_per_px, 1.0f, 1.0f, 1.0f, glyph.alpha, /*sample_palette=*/true);
+            m_ui->QueueGlyphQuad(glyph.sprite, glyph.x, glyph.y, glyph.units_per_px, 1.0f, 1.0f, 1.0f, glyph.alpha, /*sample_palette=*/true);
             break;
         case IRTextGlyphKind::ColourSprite:
-            m_ui->DrawGlyphQuad(glyph.sprite, glyph.x, glyph.y, glyph.units_per_px, r, g, b, glyph.alpha, /*sample_palette=*/false);
+            m_ui->QueueGlyphQuad(glyph.sprite, glyph.x, glyph.y, glyph.units_per_px, r, g, b, glyph.alpha, /*sample_palette=*/false);
             break;
         case IRTextGlyphKind::SolidRect:
-            m_ui->DrawSolidRect(glyph.x, glyph.y, glyph.w, glyph.h, r, g, b, glyph.alpha);
+            m_ui->QueueSolidRect(glyph.x, glyph.y, glyph.w, glyph.h, r, g, b, glyph.alpha);
             break;
         }
     }
+    m_ui->EndGlyphBatch();
 
     if (scissor_valid)
         glDisable(GL_SCISSOR_TEST);

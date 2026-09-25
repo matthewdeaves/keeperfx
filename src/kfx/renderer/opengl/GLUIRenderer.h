@@ -96,6 +96,20 @@ public:
                        float r, float g, float b, float a, bool sample_palette = true,
                        const unsigned char* cmap = nullptr);
 
+    /** Batches the glyph/underline quads of one GLTextRenderer::DrawGlyphs()
+     *  call through the same FlushQuadRun() batching every other UI quad
+     *  uses, instead of one draw call per glyph. Begin/End bracket a single
+     *  text command (matches its glScissor bracket); Queue* replaces the old
+     *  immediate DrawGlyphQuad/DrawSolidRect calls in that loop. Flushes
+     *  mid-batch only if the pass type changes (rare: a colour modifier
+     *  toggling ONE_COLOR sprite<->palette-sprite mid-string). */
+    void BeginGlyphBatch();
+    void QueueGlyphQuad(SpriteHandle glyph, float x, float y, int units_per_px,
+                        float r, float g, float b, float a, bool sample_palette = true,
+                        const unsigned char* cmap = nullptr);
+    void QueueSolidRect(float x, float y, float w, float h, float r, float g, float b, float a);
+    void EndGlyphBatch();
+
     SpriteHandle ResolveDbcGlyph(const struct AsianFont* font, uint32_t codepoint);
 
     void DrawSolidRect(float x, float y, float w, float h, float r, float g, float b, float a)
@@ -163,6 +177,11 @@ private:
     // WorldOverlay=0, WorldOverlayFlat=1, GameUI=2, Overlay=3 (matches IRUILayer).
     static constexpr int kLayerCount = 4;
     std::vector<UIQuad> m_quads[kLayerCount]; // RT: per-frame scratch, built by BuildQuadsFromIR()
+
+    // Scratch run for BeginGlyphBatch()/QueueGlyphQuad()/QueueSolidRect()/EndGlyphBatch().
+    std::vector<UIQuad> m_text_batch_run;
+    PassType m_text_batch_pass = PASS_SPRITE;
+    int m_text_batch_remap_row = -1;
 
     // Game viewport rect for this frame, captured by BuildQuadsFromIR().
     int  m_game_vp_x = 0;

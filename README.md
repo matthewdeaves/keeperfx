@@ -23,6 +23,12 @@ OpenGL fixes. **Saves made by older builds will not load** (upstream's save
 format change, dkfans/keeperfx#5424); start new games or finish old ones on
 `macos-v1.4.10`.
 
+**The KeeperFX data must match too.** The 1.4.0 release data is too old for this
+engine (e.g. the main menu's first button shows no text). Each release here
+includes `KeeperFX-data-update.zip`, built from the same commit: unzip it over
+your KeeperFX folder. Your own Dungeon Keeper files and `keeperfx.cfg` are not
+touched.
+
 ## Changes in this fork
 
 What this fork adds on top of upstream `dkfans/keeperfx`:

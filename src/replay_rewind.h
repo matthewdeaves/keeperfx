@@ -37,6 +37,8 @@ extern "C" {
 #elif defined(_WIN32)
 #define REWIND_SECTION(name) __attribute__((section(name)))
 #define kfx_rewindable REWIND_SECTION(".rwd$u")
+#elif defined(__APPLE__)
+#define kfx_rewindable __attribute__((section("__DATA,kfx_rwd")))
 #else
 #define kfx_rewindable __attribute__((section("kfx_rwd")))
 #endif

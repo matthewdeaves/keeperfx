@@ -9,12 +9,19 @@ macOS build. For the game itself, and on Windows/Linux, use
 
 ## Download (Apple Silicon)
 
-Self-contained **`KeeperFX.app`** (currently `macos-v1.4.10`, tags `macos-v*`):
+Self-contained **`KeeperFX.app`** (currently `macos-v1.5.0`, tags `macos-v*`):
 **https://github.com/matthewdeaves/keeperfx/releases/latest**
 
 Drop it next to your existing KeeperFX data (and the original Dungeon Keeper
 files) and double-click. First-launch Gatekeeper and folder-layout notes are
 under [macOS: running](#macos-running); or [build it yourself](#macos-build-from-source).
+
+**macos-v1.5.0 is rebased onto upstream `dkfans/keeperfx` as of 2026-10-23**
+(`cb7fc54fa`, 130 commits since the previous release): multiplayer spectators and
+client-side prediction, replay rewind (hold backspace), and many gameplay and
+OpenGL fixes. **Saves made by older builds will not load** (upstream's save
+format change, dkfans/keeperfx#5424); start new games or finish old ones on
+`macos-v1.4.10`.
 
 ## Changes in this fork
 
@@ -44,6 +51,12 @@ What this fork adds on top of upstream `dkfans/keeperfx`:
   out; and every glyph was its own GPU draw call. Text now batches into one
   draw call per run. Measured on an Apple Silicon Mac: a scrolling tooltip that
   dropped rendering to 4 FPS now holds a steady 58-60.
+
+- **Replay rewind** uses a Mach-O section (`__DATA,kfx_rwd`) for its rewindable
+  state on macOS, since upstream's version relies on ELF linker symbols.
+- `macos.mk` now globs `src/` the way upstream's CMake does instead of keeping
+  a hand-written source list, so upstream adding or moving files no longer
+  breaks the macOS build.
 
 ### User-data locations
 - Saves, settings, high scores, netplay config and screenshots now write to the

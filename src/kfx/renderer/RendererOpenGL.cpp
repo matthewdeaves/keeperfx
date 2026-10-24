@@ -526,7 +526,7 @@ void RendererOpenGL::render_thread_present()
 #endif
         m_gl_context->SwapBuffers();
 #ifdef __APPLE__
-        m_impl->BindScreenTarget(fd);
+        m_impl->BindScreenTarget(m_impl->frames[m_impl->render_idx]);
 #endif
     }
     KFX_GPU_COLLECT();

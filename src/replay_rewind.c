@@ -129,6 +129,9 @@ static size_t stage_cap;
 #if defined(_WIN32)
 REWIND_SECTION(".rwd$a") static char rwd_start[1];
 REWIND_SECTION(".rwd$z") static char rwd_end[1];
+#elif defined(__APPLE__)
+extern char rwd_start[] __asm("section$start$__DATA$kfx_rwd");
+extern char rwd_end[] __asm("section$end$__DATA$kfx_rwd");
 #else
 extern char __start_kfx_rwd[];
 extern char __stop_kfx_rwd[];

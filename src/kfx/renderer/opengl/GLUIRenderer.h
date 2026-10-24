@@ -92,15 +92,11 @@ public:
     void SubmitMinimap(int screen_x, int screen_y, int size,
                        const int32_t* shape_start, const int32_t* shape_end) override;
 
-    void DrawGlyphQuad(SpriteHandle glyph, float x, float y, int units_per_px,
-                       float r, float g, float b, float a, bool sample_palette = true,
-                       const unsigned char* cmap = nullptr);
-
     /** Batches the glyph/underline quads of one GLTextRenderer::DrawGlyphs()
      *  call through the same FlushQuadRun() batching every other UI quad
      *  uses, instead of one draw call per glyph. Begin/End bracket a single
-     *  text command (matches its glScissor bracket); Queue* replaces the old
-     *  immediate DrawGlyphQuad/DrawSolidRect calls in that loop. Flushes
+     *  text command (matches its glScissor bracket); also used for the
+     *  single-quad software cursor. Flushes
      *  mid-batch only if the pass type changes (rare: a colour modifier
      *  toggling ONE_COLOR sprite<->palette-sprite mid-string). */
     void BeginGlyphBatch();
@@ -111,11 +107,6 @@ public:
     void EndGlyphBatch();
 
     SpriteHandle ResolveDbcGlyph(const struct AsianFont* font, uint32_t codepoint);
-
-    void DrawSolidRect(float x, float y, float w, float h, float r, float g, float b, float a)
-    {
-        draw_solid_quad(x, y, w, h, r, g, b, a);
-    }
 
     const char* GetName() const override { return "GL-UI"; }
 
@@ -138,10 +129,6 @@ private:
     GpuResourceHandle m_shader_remap_handle          = kInvalidGpuResource;
     GpuResourceHandle m_shader_clut_handle            = kInvalidGpuResource;
     GpuResourceHandle m_shader_solid_handle          = kInvalidGpuResource;
-    // Single-quad immediate path (text glyphs, cursor). One GpuGeometryBuffer
-    // handle bundles the VAO+VBO pair the mapper realizes together.
-    GpuResourceHandle m_geom_handle = kInvalidGpuResource;
-
     /** Resolves a program handle to its raw GL id, or 0 if unresolved. */
     unsigned int ResolveShaderId(GpuResourceHandle handle) const;
 
@@ -149,11 +136,6 @@ private:
      *  glyph handle (those are never forgotten). */
     bool IsSpriteHandleLive(SpriteHandle handle) const;
 
-    void draw_textured_quad(GpuResourceHandle shader_handle, float x, float y, float w, float h,
-                            float u0, float v0, float u1, float v1,
-                            float r, float g, float b, float a,
-                            float remap_row = -1.0f);
-    void draw_solid_quad(float x, float y, float w, float h, float r, float g, float b, float a);
     void ensure_clut_valid();
     int resolve_clut_row(const unsigned char* cmap);
 
@@ -212,8 +194,7 @@ private:
     void DrawGameUIQuadsInterleaved(std::vector<UIQuad>& quads, const TextCommandBuffers& text,
                                     GLTextRenderer* text_renderer);
 
-    // Batched-layer scratch VAO/VBO -- separate from m_geom_handle (the
-    // single-quad immediate path) since a batch run can be many quads.
+    // Batched-layer scratch VAO/VBO; a batch run can be many quads.
     static constexpr int kBatchVertexCapacity = 4096;
     GpuResourceHandle m_batch_geom_handle = kInvalidGpuResource;
 

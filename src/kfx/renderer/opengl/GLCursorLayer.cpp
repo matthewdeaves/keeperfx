@@ -66,6 +66,10 @@ GLCursorSnapshot GLCursorLayer::Snapshot() const
 void GLCursorLayer::DrawSnapshot(const GLCursorSnapshot& s)
 {
     if (s.has_pointer && m_ui)
-        m_ui->DrawGlyphQuad(s.handle, (float)s.x, (float)s.y,
-                            s.units_per_px, 1.0f, 1.0f, 1.0f, 1.0f);
+    {
+        m_ui->BeginGlyphBatch();
+        m_ui->QueueGlyphQuad(s.handle, (float)s.x, (float)s.y,
+                             s.units_per_px, 1.0f, 1.0f, 1.0f, 1.0f);
+        m_ui->EndGlyphBatch();
+    }
 }

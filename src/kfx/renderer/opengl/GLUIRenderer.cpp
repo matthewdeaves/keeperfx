@@ -22,8 +22,7 @@
 namespace {
 
 // Swap the U or V pair to mirror the sprite instead of touching vertex
-// positions -- draw_textured_quad()'s quad geometry stays untouched, so the
-// existing dst rect (x,y,w,h) is unaffected either way.
+// positions, so the existing dst rect (x,y,w,h) is unaffected either way.
 void apply_flip_flags(TbDrawFlagsMask draw_flags, float& u0, float& v0, float& u1, float& v1)
 {
     if (draw_flags & Lb_SPRITE_FLIP_HORIZ) std::swap(u0, u1);
@@ -120,16 +119,6 @@ bool GLUIRenderer::Init()
         m_clut_tex_handle = m_resource_mapper->RequestCreateTexture(clut_tex_desc);
     }
 
-    GpuGeometryBufferDesc geom_desc;
-    geom_desc.vertex_stride = 9 * (uint32_t)sizeof(float);
-    geom_desc.attribs = UIVertexAttribs();
-    geom_desc.dynamic = true;
-    geom_desc.initial_vertex_capacity = 6 * 9 * sizeof(float);
-    geom_desc.debug_name = "ui_quad";
-    m_geom_handle = m_resource_mapper->RequestCreateGeometryBuffer(geom_desc);
-    if (m_resource_mapper->ResolveGeometryBuffer(m_geom_handle) == nullptr)
-        return false;
-
     GpuGeometryBufferDesc batch_desc;
     batch_desc.vertex_stride = 9 * (uint32_t)sizeof(float);
     batch_desc.attribs = UIVertexAttribs();
@@ -170,64 +159,6 @@ SpriteHandle GLUIRenderer::ResolveSprite(const struct TbSprite* spr)
     if (h != kInvalidSpriteHandle && m_atlas)
         m_atlas->PackSprite(h, spr);
     return h;
-}
-
-void GLUIRenderer::draw_textured_quad(GpuResourceHandle shader_handle, float x, float y, float w, float h,
-                                      float u0, float v0, float u1, float v1,
-                                      float r, float g, float b, float a,
-                                      float remap_row)
-{
-    if (!m_resource_mapper) return;
-    const GLGeometryBuffer* geom = m_resource_mapper->ResolveGeometryBuffer(m_geom_handle);
-    const unsigned int shader = ResolveShaderId(shader_handle);
-    if (!shader || !geom) return;
-
-    const float verts[6 * 9] = {
-        x,     y,     u0, v0,  r, g, b, a, 0.0f,
-        x + w, y,     u1, v0,  r, g, b, a, 0.0f,
-        x + w, y + h, u1, v1,  r, g, b, a, 0.0f,
-        x,     y,     u0, v0,  r, g, b, a, 0.0f,
-        x + w, y + h, u1, v1,  r, g, b, a, 0.0f,
-        x,     y + h, u0, v1,  r, g, b, a, 0.0f,
-    };
-
-    glUseProgram(shader);
-    glUniform2f(glGetUniformLocation(shader, "u_screen_size"), (float)m_screen_w, (float)m_screen_h);
-
-    glActiveTexture(GL_TEXTURE0);
-    {
-        const GLTexture* atlas_tex = (m_atlas && m_resource_mapper)
-            ? m_resource_mapper->ResolveTexture(m_atlas->GetTexture()) : nullptr;
-        glBindTexture(GL_TEXTURE_2D, atlas_tex ? atlas_tex->id : 0);
-    }
-    glUniform1i(glGetUniformLocation(shader, "u_sprite_atlas"), 0);
-
-    if (shader_handle == m_shader_sprite_handle || shader_handle == m_shader_remap_handle) {
-        const GLTexture* pal_tex = m_resource_mapper->ResolveTexture(m_palette_tex_handle);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, pal_tex ? pal_tex->id : 0);
-        glUniform1i(glGetUniformLocation(shader, "u_palette"), 1);
-    }
-    if (shader_handle == m_shader_clut_handle) {
-        const GLTexture* clut_tex = m_resource_mapper->ResolveTexture(m_clut_tex_handle);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, clut_tex ? clut_tex->id : 0);
-        glUniform1i(glGetUniformLocation(shader, "u_clut"), 1);
-        glUniform1f(glGetUniformLocation(shader, "u_clut_v"), remap_row);
-    }
-    if (shader_handle == m_shader_remap_handle) {
-        const GLTexture* fade_tex = m_resource_mapper->ResolveTexture(m_fade_table_tex_handle);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, fade_tex ? fade_tex->id : 0);
-        glUniform1i(glGetUniformLocation(shader, "u_fade_table"), 2);
-        glUniform1f(glGetUniformLocation(shader, "u_remap_row"), remap_row);
-    }
-
-    glBindVertexArray(geom->vao);
-    glBindBuffer(GL_ARRAY_BUFFER, geom->vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(verts), verts);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
 }
 
 void GLUIRenderer::ensure_clut_valid()
@@ -309,58 +240,6 @@ int GLUIRenderer::resolve_clut_row(const unsigned char* cmap)
     m_clut_remaps.push_back(copy);
 
     return row_idx;
-}
-
-void GLUIRenderer::draw_solid_quad(float x, float y, float w, float h, float r, float g, float b, float a)
-{
-    if (!m_resource_mapper) return;
-    const GLGeometryBuffer* geom = m_resource_mapper->ResolveGeometryBuffer(m_geom_handle);
-    const unsigned int shader = ResolveShaderId(m_shader_solid_handle);
-    if (!shader || !geom) return;
-
-    const float verts[6 * 9] = {
-        x,     y,     0, 0,  r, g, b, a, 0.0f,
-        x + w, y,     0, 0,  r, g, b, a, 0.0f,
-        x + w, y + h, 0, 0,  r, g, b, a, 0.0f,
-        x,     y,     0, 0,  r, g, b, a, 0.0f,
-        x + w, y + h, 0, 0,  r, g, b, a, 0.0f,
-        x,     y + h, 0, 0,  r, g, b, a, 0.0f,
-    };
-
-    glUseProgram(shader);
-    glUniform2f(glGetUniformLocation(shader, "u_screen_size"), (float)m_screen_w, (float)m_screen_h);
-    glBindVertexArray(geom->vao);
-    glBindBuffer(GL_ARRAY_BUFFER, geom->vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(verts), verts);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-}
-
-void GLUIRenderer::DrawGlyphQuad(SpriteHandle glyph, float x, float y, int units_per_px,
-                                 float r, float g, float b, float a, bool sample_palette,
-                                 const unsigned char* cmap)
-{
-    SpriteUV uv;
-    if (!m_atlas || !m_atlas->GetUV(glyph, uv))
-    {
-        static std::unordered_set<SpriteHandle> s_logged;
-        if (m_atlas && s_logged.insert(glyph).second)
-            WARNLOG("GLUIRenderer::DrawGlyphQuad: GetUV(handle=%u) failed -- glyph/cursor not in atlas", (unsigned)glyph);
-        return;
-    }
-    float w = uv.pixel_w * units_per_px / 16.0f;
-    float h = uv.pixel_h * units_per_px / 16.0f;
-    if (sample_palette && cmap != nullptr)
-    {
-        const int clut_row = resolve_clut_row(cmap);
-        const float clut_v = ((float)clut_row + 0.5f) / (float)k_clut_rows;
-        draw_textured_quad(m_shader_clut_handle, x, y, w, h, uv.u0, uv.v0, uv.u1, uv.v1, r, g, b, a, clut_v);
-    }
-    else
-    {
-        draw_textured_quad(sample_palette ? m_shader_sprite_handle : m_shader_sprite_colored_handle,
-                           x, y, w, h, uv.u0, uv.v0, uv.u1, uv.v1, r, g, b, a);
-    }
 }
 
 void GLUIRenderer::BeginGlyphBatch()
@@ -470,7 +349,7 @@ SpriteHandle GLUIRenderer::ResolveDbcGlyph(const struct AsianFont* font, uint32_
     // dbc_draw_font_sprite()) into 8-bit-per-pixel "palette index" bytes so
     // it can share GLSpriteAtlas's shelf packer and R8 texture: 0 stays
     // transparent (discarded by UI_SPRITE_COLORED_FRAGMENT_SHADER), any
-    // nonzero index draws fully opaque, flat-tinted by DrawGlyphQuad's r/g/b/a.
+    // nonzero index draws fully opaque, flat-tinted by QueueGlyphQuad's r/g/b/a.
     std::vector<uint8_t> expanded((size_t)w * (size_t)h);
     for (int y = 0; y < h; ++y)
     {

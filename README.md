@@ -9,14 +9,17 @@ macOS build. For the game itself, and on Windows/Linux, use
 
 ## Download (Apple Silicon)
 
-Self-contained **`KeeperFX.app`** (currently `macos-v1.5.1`, tags `macos-v*`):
+Self-contained **`KeeperFX.app`** (currently `macos-v1.5.2`, tags `macos-v*`):
 **https://github.com/matthewdeaves/keeperfx/releases/latest**
 
-Drop it next to your existing KeeperFX data (and the original Dungeon Keeper
-files) and double-click. First-launch Gatekeeper and folder-layout notes are
-under [macOS: running](#macos-running); or [build it yourself](#macos-build-from-source).
+For a first install, download **`KeeperFX.dmg`** from that page: it has the game,
+KeeperFX's own data, and a helper that adds your own Dungeon Keeper files (from
+GOG, EA, Steam or the CD; they can't be shipped). Follow `READ ME FIRST.txt` on
+the disk image. Already have a KeeperFX folder? Use `KeeperFX.app.zip` and
+`KeeperFX-data-update.zip` instead (see below). Folder-layout notes are under
+[macOS: running](#macos-running); or [build it yourself](#macos-build-from-source).
 
-**macos-v1.5.1 is rebased onto upstream `dkfans/keeperfx` as of 2026-10-23**
+**macos-v1.5.2 is rebased onto upstream `dkfans/keeperfx` as of 2026-10-23**
 (`cb7fc54fa`, 130 commits since the previous release): multiplayer spectators and
 client-side prediction, replay rewind (hold backspace), and many gameplay and
 OpenGL fixes. **Saves made by older builds will not load** (upstream's save

@@ -1,0 +1,29 @@
+KeeperFX for Apple Silicon (unofficial fork)
+============================================
+
+You need: an Apple Silicon Mac (macOS 15 or later) and your own copy of
+Dungeon Keeper or Dungeon Keeper Gold (GOG, EA, Steam, or the original CD).
+The original game files can't be included here.
+
+1. Drag the "KeeperFX" folder from this disk image to somewhere on your Mac
+   (Applications, Documents, Desktop - anywhere you can write to).
+
+2. Open Terminal and clear the "downloaded from the internet" flag once
+   (the app is ad-hoc signed, not notarized). Type this, a space, then drag the
+   KeeperFX folder into the Terminal window, and press Return:
+
+       xattr -dr com.apple.quarantine
+
+3. In the KeeperFX folder, double-click "Add Dungeon Keeper Files.command" and
+   drag your Dungeon Keeper folder into the window when asked. (GOG: use the
+   files inside its CD image - mount or extract it first.)
+
+4. Open KeeperFX.app. If macOS asks for access to the folder, click Allow.
+
+Your saves, settings and screenshots go in ~/Library/Application Support/KeeperFX.
+keeperfx.cfg is an optional starter config; the game works without editing it.
+
+Saves from builds before macos-v1.5.0 won't load.
+
+This is an unofficial personal fork with no support. The game itself:
+https://github.com/dkfans/keeperfx   This fork: https://github.com/matthewdeaves/keeperfx

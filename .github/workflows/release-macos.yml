@@ -116,19 +116,15 @@ jobs:
 
           Native Apple Silicon (arm64) build of KeeperFX.
 
-          **How to use**
-          1. Download and unzip `KeeperFX.app.zip`.
-          2. Drop `KeeperFX.app` into your existing KeeperFX folder, next to your `data/`, `sound/`, `fxdata/`, `campgns/` ... game data.
-          3. **Clear the "downloaded from the internet" flag** — this app is ad-hoc signed, not notarized, so macOS 15/26 blocks it on first launch ("Apple could not verify..."). Easiest fix, in Terminal:
-             ```
-             xattr -dr com.apple.quarantine /path/to/KeeperFX.app
-             ```
-             (Or: double-click, then System Settings → Privacy & Security → **Open Anyway**.)
-          4. Double-click it. If the folder is privacy-protected (Desktop/Documents/Downloads), click **Allow** when macOS asks for file access.
+          **Download `KeeperFX.dmg`** — it has everything except the original Dungeon Keeper files, which can't be shipped: you need your own copy of Dungeon Keeper / Gold (GOG, EA, Steam or CD). Open the disk image and follow `READ ME FIRST.txt`:
+          1. Drag the `KeeperFX` folder somewhere on your Mac.
+          2. Clear the download flag once (the app is ad-hoc signed, not notarized): `xattr -dr com.apple.quarantine <the KeeperFX folder>`
+          3. Run `Add Dungeon Keeper Files.command` and point it at your Dungeon Keeper files.
+          4. Open `KeeperFX.app`.
 
-          Requires an Apple Silicon Mac and your own original Dungeon Keeper data plus KeeperFX data. This build is rebased on a recent upstream development commit, so **a 1.4.0 data install is too old** (for example the main menu's first button shows no text). Download `KeeperFX-data-update.zip` from this release and unzip it over your KeeperFX folder (it never touches your `keeperfx.cfg`). Saves from older builds will not load (upstream save-format change).
+          Requires an Apple Silicon Mac on macOS 15 or later. Saves from builds before macos-v1.5.0 won't load (upstream save-format change).
 
-          **Optional:** `keeperfx.cfg` is a starter config with a gentler GUI flash rate. Only use it if your game folder doesn't already have a `keeperfx.cfg` — your existing one is left untouched.
+          **Already have a KeeperFX folder?** Use `KeeperFX.app.zip` (engine only) plus `KeeperFX-data-update.zip` (KeeperFX's own data, built from this commit; it never touches your `keeperfx.cfg`). An older data install, such as the 1.4.0 release, is too old for this engine. `keeperfx.cfg` is an optional starter config with a gentler GUI flash rate.
           EOF
           printf '\nBuilt from commit %s.\n' "$SHA" >> "$RUNNER_TEMP/notes.md"
           TAG="${{ steps.rel.outputs.tag }}"
@@ -185,3 +181,30 @@ jobs:
           set -eux
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then TAG="${GITHUB_REF_NAME}"; else TAG="macos-latest"; fi
           gh release upload "$TAG" KeeperFX-data-update.zip --clobber
+
+  # The one-download disk image: app + KeeperFX data + a helper that adds the user's
+  # own Dungeon Keeper files. Built from the release's own assets so it always
+  # matches them.
+  release-dmg:
+    name: "Build & attach KeeperFX.dmg"
+    needs: release-data
+    if: github.repository == 'matthewdeaves/keeperfx'
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the disk image from the release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then TAG="${GITHUB_REF_NAME}"; else TAG="macos-latest"; fi
+          mkdir assets && cd assets
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" \
+            -p KeeperFX.app.zip -p KeeperFX-data-update.zip -p keeperfx.cfg
+          ditto -x -k KeeperFX.app.zip app
+          unzip -q KeeperFX-data-update.zip -d data
+          cd ..
+          tools/make_macos_dmg.sh assets/app/KeeperFX.app assets/data assets/keeperfx.cfg KeeperFX.dmg
+          gh release upload "$TAG" KeeperFX.dmg --clobber
